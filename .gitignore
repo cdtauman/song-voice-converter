@@ -1,0 +1,62 @@
+# ── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.uv/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# ── מודלי AI (גדולים מדי ל-git) ────────────────────
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.index
+*.th
+models/
+checkpoints/
+
+# ── שמע: לא מעלים חומר מוגן לריפו ──────────────────
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.ogg
+*.aac
+testdata/
+benchmark/results/
+benchmark/audio/
+
+# ── פלט ריצה ───────────────────────────────────────
+cache/
+logs/
+*.log
+out/
+tmp/
+temp/
+
+# ── אריזה ──────────────────────────────────────────
+packaging/build/
+packaging/output/
+*.exe
+*.msi
+
+# ── מערכת הפעלה ועורכים ────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# ── סודות והגדרות מקומיות ──────────────────────────
+.env
+.env.*
+local_settings.toml
