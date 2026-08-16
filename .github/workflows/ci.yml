@@ -18,7 +18,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        # 3.11 only: the Phase 1 spike showed 3.12 breaks audio-separator via
+        # librosa 1.0.0 dropping audioread. See docs/compat-matrix.md.
+        python-version: ["3.11"]
 
     steps:
       - uses: actions/checkout@v4

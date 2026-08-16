@@ -113,13 +113,14 @@ def _has_nvidia_driver() -> bool:
 # --------------------------------------------------------------------------- #
 
 def check_python() -> CheckResult:
+    """3.11 only -- verified by the Phase 1 spike, see docs/compat-matrix.md."""
     v = sys.version_info
     txt = f"{v.major}.{v.minor}.{v.micro}"
-    if (3, 11) <= (v.major, v.minor) < (3, 13):
+    if (v.major, v.minor) == (3, 11):
         return CheckResult("python", "גרסת Python", Status.OK, f"Python {txt}")
     return CheckResult(
         "python", "גרסת Python", Status.FAIL,
-        f"Python {txt} — נדרשת גרסה 3.11 או 3.12.",
+        f"Python {txt} — נדרשת גרסה 3.11.",
         detail=sys.executable,
     )
 
