@@ -1,21 +1,79 @@
-name: TEMP hash model config
+name: TEMP finalize Phase 2 integrity
 
 on:
   push:
     branches: ["phase/2-separation"]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  hash-config:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Download exact production config and print SHA-256
+      - uses: actions/checkout@v4
+        with:
+          ref: phase/2-separation
+          fetch-depth: 0
+
+      - name: Hash exact production config
         shell: bash
         run: |
           set -euo pipefail
           url='https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/vocals_mel_band_roformer.yaml'
-          curl -fL --retry 3 --retry-delay 2 "$url" -o vocals_mel_band_roformer.yaml
-          wc -c vocals_mel_band_roformer.yaml
-          sha256sum vocals_mel_band_roformer.yaml
+          curl -fL --retry 3 --retry-delay 2 "$url" -o /tmp/vocals_mel_band_roformer.yaml
+          test "$(wc -c < /tmp/vocals_mel_band_roformer.yaml)" = "944"
+          echo "CONFIG_SHA=$(sha256sum /tmp/vocals_mel_band_roformer.yaml | awk '{print $1}')" >> "$GITHUB_ENV"
+
+      - name: Apply final Phase 2 fixes
+        shell: python
+        env:
+          CHECKPOINT_SHA: 87201f4d31afb5bc79993230fc49446918425574db48c01c405e44f365c7559e
+        run: |
+          import json
+          import os
+          from pathlib import Path
+
+          # 1) Pin both exact files used by the redistributable/default model.
+          model_path = Path("src/svc_engine/data/models.json")
+          data = json.loads(model_path.read_text(encoding="utf-8"))
+          files = data["models"]["sep_melband_kim"]["files"]
+          by_name = {item["name"]: item for item in files}
+          by_name["vocals_mel_band_roformer.ckpt"]["sha256"] = os.environ["CHECKPOINT_SHA"]
+          by_name["vocals_mel_band_roformer.yaml"]["sha256"] = os.environ["CONFIG_SHA"]
+          model_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+          # 2) Make the catalogue audit a permanent CI gate: shippable files
+          # must be pinned, and every supplied SHA-256 must be well formed.
+          audit_path = Path("tools/check_model_catalogue.py")
+          audit = audit_path.read_text(encoding="utf-8")
+          needle = '''    if undeclared:\n        print(f"FAIL: {len(undeclared)} catalogue entries have no licence audit")\n        return 1, rows\n\n    return 0, rows\n'''
+          replacement = '''    if undeclared:\n        print(f"FAIL: {len(undeclared)} catalogue entries have no licence audit")\n        return 1, rows\n\n    invalid_hashes: list[str] = []\n    unpinned_shippable: list[str] = []\n    for spec in registry.models.values():\n        for file_spec in spec.files:\n            digest = file_spec.sha256\n            if digest is not None:\n                if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):\n                    invalid_hashes.append(f"{spec.id}/{file_spec.name}")\n            elif spec.license.is_redistributable:\n                unpinned_shippable.append(f"{spec.id}/{file_spec.name}")\n\n    if invalid_hashes:\n        print("FAIL: malformed SHA-256 in catalogue: " + ", ".join(invalid_hashes))\n        return 1, rows\n    if unpinned_shippable:\n        print(\n            "FAIL: redistributable model files must be SHA-256 pinned: "\n            + ", ".join(unpinned_shippable)\n        )\n        return 1, rows\n\n    return 0, rows\n'''
+          if needle not in audit:
+              raise SystemExit("expected catalogue audit insertion point not found")
+          audit_path.write_text(audit.replace(needle, replacement, 1), encoding="utf-8")
+
+          # 3) --with-cleanup means exactly what its help says: add the cleanup
+          # comparison to balanced only, never multiply Fast/Max runs.
+          bench_path = Path("tools/bench_real.py")
+          bench = bench_path.read_text(encoding="utf-8")
+          old = '''        for quality in qualities:\n            for cleanup in cleanup_sets:\n'''
+          new = '''        for quality in qualities:\n            applicable_cleanup = (\n                cleanup_sets if quality is QualityLevel.BALANCED else [()]\n            )\n            for cleanup in applicable_cleanup:\n'''
+          if old not in bench:
+              raise SystemExit("expected benchmark loop not found")
+          bench_path.write_text(bench.replace(old, new, 1), encoding="utf-8")
+
+          # Remove this one-shot workflow from the resulting branch.
+          Path(".github/workflows/temp-hash-config.yml").unlink()
+
+      - name: Commit finalized fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/svc_engine/data/models.json tools/check_model_catalogue.py tools/bench_real.py .github/workflows/temp-hash-config.yml
+          git commit -m 'fix: close Phase 2 integrity blockers'
+          git push origin HEAD:phase/2-separation
