@@ -1,0 +1,241 @@
+{
+  "version": 1,
+  "note": "Licences verified against the HuggingFace API on 2026-08-17. Every URL was reachability-checked the same day. Do not add a model here without both. See docs/models.md section 1.",
+  "models": {
+    "sep_melband_kim": {
+      "kind": "separation",
+      "backend": "audio_separator",
+      "engine_model": "vocals_mel_band_roformer.ckpt",
+      "display_name_he": "הפרדה — איכות גבוהה (Mel-Band Roformer)",
+      "stems": ["vocals", "instrumental"],
+      "sdr": 12.5967,
+      "license": {
+        "spdx": "MIT",
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/KimberleyJSN/melbandroformer -> cardData.license",
+        "note_he": "רישיון MIT מאומת — מותר להפצה."
+      },
+      "note_he": "מודל ההפרדה הראשי. ה-SDR הגבוה ביותר מבין המועמדים שנבדקו, וגם היחיד עם רישיון מתירני מאומת.",
+      "files": [
+        {
+          "name": "vocals_mel_band_roformer.ckpt",
+          "size_bytes": 913106900,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/KimberleyJSN/melbandroformer/resolve/main/MelBandRoformer.ckpt"
+          ]
+        },
+        {
+          "name": "vocals_mel_band_roformer.yaml",
+          "size_bytes": 944,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/vocals_mel_band_roformer.yaml"
+          ]
+        }
+      ]
+    },
+
+    "sep_bs_roformer_1297": {
+      "kind": "separation",
+      "backend": "audio_separator",
+      "engine_model": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+      "display_name_he": "הפרדה — מהיר (BS-Roformer)",
+      "stems": ["vocals", "instrumental"],
+      "sdr": 11.7742,
+      "license": {
+        "spdx": null,
+        "verified_at": "2026-08-17",
+        "source": "no source repository with a licence declaration was found; distributed via the UVR model repo",
+        "note_he": "אין הצהרת רישיון — לשימוש פרטי בלבד, לא ייכלל בגרסה מופצת."
+      },
+      "note_he": "קטן ומהיר משמעותית (639MB מול 913MB). ברירת המחדל לרמת האיכות 'מהיר'.",
+      "files": [
+        {
+          "name": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+          "size_bytes": 639331213,
+          "sha256": null,
+          "urls": [
+            "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/model_bs_roformer_ep_317_sdr_12.9755.ckpt"
+          ]
+        },
+        {
+          "name": "model_bs_roformer_ep_317_sdr_12.9755.yaml",
+          "size_bytes": 2273,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/model_bs_roformer_ep_317_sdr_12.9755.yaml"
+          ]
+        }
+      ]
+    },
+
+    "sep_melband_kim_ft2": {
+      "kind": "separation",
+      "backend": "audio_separator",
+      "engine_model": "mel_band_roformer_kim_ft2_unwa.ckpt",
+      "display_name_he": "הפרדה — כיוונון עדין (Kim FT2)",
+      "stems": ["vocals", "instrumental"],
+      "sdr": null,
+      "license": {
+        "spdx": null,
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/pcunwa/Kim-Mel-Band-Roformer-FT -> cardData.license is absent",
+        "note_he": "אין הצהרת רישיון — לשימוש פרטי בלבד."
+      },
+      "note_he": "כיוונון עדין של המודל הראשי. משמש כשותף ל-ensemble ברמת 'איכות מרבית'.",
+      "files": [
+        {
+          "name": "mel_band_roformer_kim_ft2_unwa.ckpt",
+          "size_bytes": 913100690,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/pcunwa/Kim-Mel-Band-Roformer-FT/resolve/main/kimmel_unwa_ft2.ckpt"
+          ]
+        },
+        {
+          "name": "config_mel_band_roformer_kim_ft_unwa.yaml",
+          "size_bytes": 1721,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/config_mel_band_roformer_kim_ft_unwa.yaml"
+          ]
+        }
+      ]
+    },
+
+    "karaoke_aufr33_viperx": {
+      "kind": "karaoke",
+      "backend": "audio_separator",
+      "engine_model": "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt",
+      "display_name_he": "הפרדת שירה ראשית מווקאלים מלווים",
+      "stems": ["lead", "backing"],
+      "sdr": 8.44766,
+      "license": {
+        "spdx": null,
+        "verified_at": "2026-08-17",
+        "source": "no source repository with a licence declaration was found",
+        "note_he": "אין הצהרת רישיון — לשימוש פרטי בלבד."
+      },
+      "note_he": "מפריד את הקול הראשי מהמקהלה. רץ על הווקאל אחרי ההפרדה הראשית.",
+      "files": [
+        {
+          "name": "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt",
+          "size_bytes": 913096801,
+          "sha256": null,
+          "urls": [
+            "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
+          ]
+        },
+        {
+          "name": "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml",
+          "size_bytes": 1726,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml"
+          ]
+        }
+      ]
+    },
+
+    "dereverb_anvuew": {
+      "kind": "dereverb",
+      "backend": "audio_separator",
+      "engine_model": "dereverb_mel_band_roformer_anvuew_sdr_19.1729.ckpt",
+      "display_name_he": "הסרת הדהוד",
+      "stems": ["noreverb", "reverb"],
+      "sdr": 19.1729,
+      "license": {
+        "spdx": "GPL-3.0",
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/anvuew/dereverb_mel_band_roformer -> cardData.license",
+        "note_he": "רישיון GPL-3.0 — אסור בגרסה מופצת. זמין רק בהפעלה מפורשת לשימוש פרטי."
+      },
+      "note_he": "מחזיר גם את שכבת ההדהוד בנפרד — היא הקלט לאסטרטגיית המרחב האקוסטי ב-Phase 6.",
+      "files": [
+        {
+          "name": "dereverb_mel_band_roformer_anvuew_sdr_19.1729.ckpt",
+          "size_bytes": 913107578,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/anvuew/dereverb_mel_band_roformer/resolve/main/dereverb_mel_band_roformer_anvuew_sdr_19.1729.ckpt"
+          ]
+        },
+        {
+          "name": "dereverb_mel_band_roformer_anvuew.yaml",
+          "size_bytes": 1846,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/dereverb_mel_band_roformer_anvuew.yaml"
+          ]
+        }
+      ]
+    },
+
+    "deecho_sucial_v2": {
+      "kind": "deecho",
+      "backend": "audio_separator",
+      "engine_model": "dereverb-echo_mel_band_roformer_sdr_13.4843_v2.ckpt",
+      "display_name_he": "הסרת הד",
+      "stems": ["dry", "wet"],
+      "sdr": 13.4843,
+      "license": {
+        "spdx": "CC-BY-NC-SA-4.0",
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/Sucial/Dereverb-Echo_Mel_Band_Roformer -> cardData.license",
+        "note_he": "רישיון לא-מסחרי — אסור בגרסה מופצת. זמין רק בהפעלה מפורשת לשימוש פרטי."
+      },
+      "files": [
+        {
+          "name": "dereverb-echo_mel_band_roformer_sdr_13.4843_v2.ckpt",
+          "size_bytes": 455862568,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/Sucial/Dereverb-Echo_Mel_Band_Roformer/resolve/main/dereverb_echo_mbr_v2_sdr_dry_13.4843.ckpt"
+          ]
+        },
+        {
+          "name": "config_dereverb-echo_mel_band_roformer_sdr_13.4843_v2.yaml",
+          "size_bytes": 1106,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/config_dereverb-echo_mel_band_roformer_sdr_13.4843_v2.yaml"
+          ]
+        }
+      ]
+    },
+
+    "denoise_aufr33": {
+      "kind": "denoise",
+      "backend": "audio_separator",
+      "engine_model": "denoise_mel_band_roformer_aufr33_sdr_27.9959.ckpt",
+      "display_name_he": "ניקוי רעש",
+      "stems": ["dry", "noise"],
+      "sdr": 27.9959,
+      "license": {
+        "spdx": null,
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/poiqazwsx/melband-roformer-denoise -> cardData.license is absent",
+        "note_he": "אין הצהרת רישיון — לשימוש פרטי בלבד."
+      },
+      "files": [
+        {
+          "name": "denoise_mel_band_roformer_aufr33_sdr_27.9959.ckpt",
+          "size_bytes": 913097300,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/poiqazwsx/melband-roformer-denoise/resolve/main/denoise_mel_band_roformer_aufr33_sdr_27.9959.ckpt"
+          ]
+        },
+        {
+          "name": "denoise_mel_band_roformer_aufr33_sdr_27.9959_config.yaml",
+          "size_bytes": 1621,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/denoise_mel_band_roformer_aufr33_sdr_27.9959_config.yaml"
+          ]
+        }
+      ]
+    }
+  }
+}

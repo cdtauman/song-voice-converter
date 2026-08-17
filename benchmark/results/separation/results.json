@@ -1,0 +1,46 @@
+[
+  {
+    "quality": "fast",
+    "device": "xpu",
+    "seconds": 21.5,
+    "realtime_factor": 2.12,
+    "sdr_vocals": 0.93,
+    "sdr_instrumental": -6.93,
+    "reconstruction_db": 173.18,
+    "peak_vocals": 0.454,
+    "fallbacks": 0
+  },
+  {
+    "quality": "balanced",
+    "device": "xpu",
+    "seconds": 17.0,
+    "realtime_factor": 1.64,
+    "sdr_vocals": 0.84,
+    "sdr_instrumental": -7.02,
+    "reconstruction_db": 173.91,
+    "peak_vocals": 0.4545,
+    "fallbacks": 0
+  },
+  {
+    "quality": "fast",
+    "device": "cpu",
+    "seconds": 40.1,
+    "realtime_factor": 3.99,
+    "sdr_vocals": 0.93,
+    "sdr_instrumental": -6.93,
+    "reconstruction_db": 173.09,
+    "peak_vocals": 0.454,
+    "fallbacks": 0
+  },
+  {
+    "quality": "balanced",
+    "device": "cpu",
+    "seconds": 77.3,
+    "realtime_factor": 7.71,
+    "sdr_vocals": 0.84,
+    "sdr_instrumental": -7.02,
+    "reconstruction_db": 173.94,
+    "peak_vocals": 0.4545,
+    "fallbacks": 0
+  }
+]

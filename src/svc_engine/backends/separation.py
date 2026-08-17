@@ -42,6 +42,10 @@ class SeparationRequest:
     overlap: int = 4
     chunk_seconds: float | None = None
     batch_size: int = 1
+    #: Model-native window, in the units the architecture uses (not seconds).
+    #: This is the first knob the OOM ladder turns down, so it is explicit here
+    #: rather than buried in per-backend defaults.
+    segment_size: int | None = None
 
 
 @runtime_checkable

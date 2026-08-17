@@ -3,6 +3,21 @@
 # candidate : xpu-311  (Python 3.11 + torch XPU (Intel))
 # generated : 2026-08-17T00:06:44+00:00
 # machine   : Windows-10-10.0.26200-SP0
+#
+# ---------------------------------------------------------------------------
+# Phase 2 addition, 2026-08-17. The second SeparationBackend needs pymss.
+# Installed *under this file as a constraint*, so the resolver could not move
+# anything already pinned here; it added exactly three packages and nothing
+# else. `uv pip check` clean afterwards (103 packages), torch still
+# 2.13.0+xpu with XPU available.
+#
+#     uv pip install --python .venv\Scripts\python.exe -c constraints.txt pymss==2.1.3
+#
+# Re-running the spike will regenerate this file and should keep these three.
+# ---------------------------------------------------------------------------
+av==18.1.0
+pymss==2.1.3
+pymss-core==0.1.6
 
 absl-py==2.5.0
 audio-separator==0.44.5

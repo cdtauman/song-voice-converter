@@ -1,24 +1,51 @@
 # רשימת רכיבים, מודלים וספריות — כולל audit רישוי
 
-**עודכן:** 16 באוגוסט 2026 — סבב ביקורת ראשון.
+**עודכן:** 17 באוגוסט 2026 — Phase 2.
 **מדיניות:** הליבה נבנית כאילו התוכנה תופץ. רכיבי GPL מותרים **רק** בכלי פיתוח ובנצ'מרק שלא נארזים.
+
+> ## ⚠️ עדכון Phase 2 (17.8.2026) — קרא את זה לפני הטבלה שמתחת
+>
+> ה-audit שנדרש כאן בוצע במלואו, **והתוצאה שינתה שתי החלטות.** הפירוט המלא
+> ב-[phase-reports/phase-2.md](phase-reports/phase-2.md) §2–§3; התמצית:
+>
+> **1. `bgkb/bs_polarformer` אינו זמין כמודל.** הריפו מכיל `.yaml` בלבד —
+> **אין בו משקולות.** ההחלטה לבחור בו כברירת מחדל (החלטה #3) התבססה על טבלת SDR
+> ולא על בדיקה שאפשר להוריד אותו.
+>
+> **2. ברירת המחדל החדשה טובה יותר:** `KimberleyJSN/melbandroformer` הוא
+> **MIT מאומת** וגם בעל ה-SDR הגבוה ביותר במבחן (12.60). אין כאן פשרה בין
+> רישוי לאיכות.
+>
+> **3. חמישה מתוך שבעה checkpoints כבר מוחזרים 404** מריפו ההפצה של UVR.
+> לכולם אותרו מראות חיות ב-HuggingFace, וכל כתובת בקטלוג נבדקה בפועל.
+> `tools/check_model_catalogue.py --check-urls` מריץ את הבדיקה מחדש.
+>
+> **4. מודלי הניקוי אינם מתירניים:** DeReverb הוא **GPL-3.0**, DeEcho הוא
+> **CC-BY-NC-SA-4.0**. הם פעילים לשימוש פרטי ומכובים אוטומטית בבנייה להפצה.
+>
+> **מקור האמת התפעולי הוא כעת `src/svc_engine/data/models.json`** — הקטלוג
+> שהקוד קורא, עם רישיון, מקור אימות, גודל ותאריך לכל רשומה. הטבלה שלמטה היא
+> התיעוד ההיסטורי של Phase 0.
 
 ---
 
-## 1. 🆕 טבלת Audit רישוי — מודלים
+## 1. טבלת Audit רישוי — מודלים
 
 **שיטת האימות:** שאילתה ישירה ל-`huggingface.co/api/models/<id>` ולשדה `license` ב-GitHub API,
 בתאריך **16.8.2026**. עמודת "מקור האימות" מציינת מאיפה הגיע הנתון.
 
 | Checkpoint / משקולות | תפקיד | URL | רישיון מאומת | מקור האימות | קוד ה-inference | רישיון הקוד | סטטוס |
 |---|---|---|---|---|---|---|---|
-| `bgkb/bs_polarformer` | הפרדה ראשית — **ברירת מחדל** | [HF](https://huggingface.co/bgkb/bs_polarformer) | **MIT** | HF API `cardData.license` | MSST / pymss | MIT | ✅ **בליבה** |
+| `bgkb/bs_polarformer` | ~~הפרדה ראשית — ברירת מחדל~~ | [HF](https://huggingface.co/bgkb/bs_polarformer) | MIT | HF API `cardData.license` | MSST / pymss | MIT | ⛔ **בוטל ב-Phase 2 — אין בריפו משקולות, רק `.yaml`** |
 | `pcunwa/BS-Roformer-Leap` | הפרדה ראשית — חלופה | [HF](https://huggingface.co/pcunwa/BS-Roformer-Leap) | **אין הצהרה** | HF API — שדה ריק | MSST / pymss | MIT | ⚠️ **פרטי בלבד** |
 | `pcunwa/BS-Roformer-Revive` | הפרדה — מועמד | [HF](https://huggingface.co/pcunwa/BS-Roformer-Revive) | **אין הצהרה** | HF API — שדה ריק | MSST | MIT | ⚠️ פרטי בלבד |
-| Mel-Band Roformer Kim (vocals) | הפרדה — מהיר ויציב | מופץ דרך UVR / audio-separator | **טעון אימות** | לא אותר repo מקור חד-משמעי | audio-separator | MIT | 🔍 **לבדוק ב-Phase 2** |
-| Mel-Band Roformer Karaoke | ליד ↔ ווקאלים מלווים | דרך audio-separator | **טעון אימות** | — | audio-separator | MIT | 🔍 לבדוק |
-| Mel-Band Roformer DeReverb/DeEcho | הסרת הדהוד | דרך audio-separator | **טעון אימות** | — | audio-separator | MIT | 🔍 לבדוק |
-| Mel-Band Roformer Denoise | ניקוי רעש | דרך audio-separator | **טעון אימות** | — | audio-separator | MIT | 🔍 לבדוק |
+| Mel-Band Roformer Kim (vocals) | הפרדה ראשית — **ברירת מחדל חדשה** | [HF](https://huggingface.co/KimberleyJSN/melbandroformer) | **MIT** | HF API `cardData.license`, 17.8.2026 | audio-separator | MIT | ✅ **בליבה** — SDR 12.60, הגבוה במבחן |
+| Mel-Band Roformer Kim FT2 | הפרדה — שותף ל-ensemble | [HF](https://huggingface.co/pcunwa/Kim-Mel-Band-Roformer-FT) | **אין הצהרה** | HF API — שדה ריק, 17.8.2026 | audio-separator | MIT | ⚠️ **פרטי בלבד** |
+| BS-Roformer viperx 1297 | הפרדה — קטן ומהיר | UVR model repo | **אין הצהרה** | לא אותר repo מקור, 17.8.2026 | audio-separator | MIT | ⚠️ פרטי בלבד |
+| Mel-Band Roformer Karaoke (aufr33/viperx) | ליד ↔ ווקאלים מלווים | UVR model repo | **אין הצהרה** | לא אותר repo מקור, 17.8.2026 | audio-separator | MIT | ⚠️ פרטי בלבד |
+| Mel-Band Roformer DeReverb (anvuew) | הסרת הדהוד + שכבת ההדהוד | [HF](https://huggingface.co/anvuew/dereverb_mel_band_roformer) | **GPL-3.0** | HF API, 17.8.2026 | audio-separator | MIT | ⛔ **אסור בהפצה** |
+| Mel-Band Roformer DeEcho (Sucial) | הסרת הד | [HF](https://huggingface.co/Sucial/Dereverb-Echo_Mel_Band_Roformer) | **CC-BY-NC-SA-4.0** | HF API, 17.8.2026 | audio-separator | MIT | ⛔ **אסור בהפצה** (לא-מסחרי) |
+| Mel-Band Roformer Denoise (aufr33) | ניקוי רעש | [HF](https://huggingface.co/poiqazwsx/melband-roformer-denoise) | **אין הצהרה** | HF API — שדה ריק, 17.8.2026 | audio-separator | MIT | ⚠️ פרטי בלבד |
 | HTDemucs4 FT | פיצול בס/תופים/שאר | [GitHub](https://github.com/facebookresearch/demucs) | **MIT** | GitHub API | demucs | MIT | ✅ בליבה |
 | RMVPE (משקולות) | זיהוי F0 — עיקרי | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | **MIT** | HF API | [Dream-High/RMVPE](https://github.com/Dream-High/RMVPE) | Apache-2.0 | ✅ בליבה |
 | ContentVec / HuBERT (`hubert_base.pt`) | הפרדת תוכן מגוון | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | **MIT** | HF API | [contentvec](https://github.com/auspicious3000/contentvec) | MIT | ✅ בליבה |
@@ -29,15 +56,20 @@
 | מודל embedding לדובר | מדידת דמיון בבנצ'מרק | ייבחר ב-Phase 3 | טעון אימות | — | — | — | 🔬 פיתוח בלבד |
 | Seed-VC checkpoints | benchmark השוואתי | [Plachtaa/seed-vc](https://github.com/Plachtaa/seed-vc) | **GPL-3.0** | GitHub API | seed-vc | GPL-3.0 | 🔬 **סביבה מבודדת בלבד** |
 
-### מסקנת ה-Audit
+### מסקנת ה-Audit — כפי שעודכנה ב-Phase 2
 
-> **גרסה הניתנת להפצה אינה דורשת ויתור על איכות.**
-> מודל ההפרדה MIT (`bs_polarformer`, SDR 11.76) מדורג **מעל** המודל חסר הרישיון
-> (`BS-Roformer-Leap`, SDR 11.74). מודל הבסיס לאימון (TITAN) הוא Apache-2.0.
-> המשקולות של RMVPE ו-HuBERT מגיעות מריפו MIT.
+> **המסקנה המקורית מתקיימת, דרך מודל אחר.**
+> "גרסה הניתנת להפצה אינה דורשת ויתור על איכות" נשאר נכון: מודל ההפרדה
+> **MIT (`KimberleyJSN/melbandroformer`, SDR 12.60)** מדורג מעל **כל** המועמדים
+> חסרי הרישיון. מודל הבסיס לאימון (TITAN) הוא Apache-2.0, והמשקולות של RMVPE
+> ו-HuBERT מגיעות מריפו MIT.
 >
-> **הפעולה היחידה שנותרה:** לאמת את ארבעת מודלי ה-Mel-Band Roformer שמגיעים דרך
-> UVR/audio-separator. זו משימה ב-Phase 2, לא חסם.
+> **הסייג שנוסף:** המסקנה חלה על ה**הפרדה**. שלבי ה**ניקוי** (DeReverb, DeEcho,
+> Denoise, Karaoke) נשענים כרגע על מודלים שאינם מתירניים, ובגרסה מופצת הם
+> יכובו. זו יכולת חסרה בהפצה, לא בעיית איכות בהפרדה עצמה.
+>
+> **המשימה הפתוחה החדשה:** למצוא מודל DeReverb מתירני, או להסתמך על אסטרטגיה
+> B/C ב-Phase 6 (ייצור הד חדש) שאינה דורשת מודל DeReverb בזמן ריצה אצל המשתמש.
 
 ### חבילות התקנה
 

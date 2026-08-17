@@ -1,73 +1,92 @@
-# פנקס קוד צד-שלישי
+# מרשם קוד ומודלים חיצוניים
 
-מרשם של **כל** קוד חיצוני שנכנס ל-SongVoice — בין אם כתלות, כקוד מותאם או כקוד
-שהוכנס לריפו.
+**נוצר:** 17 באוגוסט 2026 — Phase 2, השלב הראשון שבו נעשה שימוש חוזר בפועל.
 
-**חובה לפי [reuse-policy.md](reuse-policy.md):** לכל רשומה — הריפו, הקבצים המדויקים,
-ה-commit, והרישיון. בלי זה אי אפשר לתחזק ואי אפשר לוודא ציות לרישיון.
+המסמך הזה ממלא את חובה 3 ב-[reuse-policy.md](reuse-policy.md#רישוי--חובות-לפני-כל-שימוש-חוזר):
+**לתעד את הריפו, הקבצים המדויקים והרישיון של כל דבר חיצוני שנשען עליו.**
 
----
-
-## 1. מקורות ייחוס מאושרים
-
-רישיונות אומתו מול GitHub API ב-**17.8.2026**. ה-commit הוא ה-HEAD באותו תאריך,
-לצורך שחזוריות.
-
-| מקור | רישיון | HEAD בתאריך הבדיקה |
-|------|--------|---------------------|
-| [mason369/AI-RVC](https://github.com/mason369/AI-RVC) | MIT | `ecbe4da80d5a13f40ed85257b293a81e1e8b3313` |
-| [IAHispano/Applio](https://github.com/IAHispano/Applio) | MIT | `085197e738ce9dd4c0bae1e0a74df5de25b89444` |
-| [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) | MIT | `81eed5e8f68b6bed1789f682fe78cdd324495afc` |
+**כלל:** אין שורה כאן = אין שימוש. אין רישיון מאומת = אין שורה.
 
 ---
 
-## 2. קוד שהוכנס לריפו (vendored)
+## 1. קוד חיצוני
 
-**נכון ל-Phase 1: אין.**
+### 1.1 ספריות שנצרכות כתלות (`pip`) — לא מועתקות
 
-כשיוכנס קוד — כל רשומה תכלול:
+זו הצורה המועדפת: **שימוש ישיר**, הדרגה הראשונה בסולם ההחלטה.
 
-| שדה | דוגמה |
-|------|--------|
-| נתיב אצלנו | `src/svc_engine/conversion/rvc/vendor/` |
-| מקור | `RVC-Project/Retrieval-based-Voice-Conversion-WebUI` |
-| קבצים מקוריים | `infer/lib/infer_pack/models.py` |
-| commit | `81eed5e8…` |
-| רישיון | MIT |
-| הודעת זכויות יוצרים | נשמרה בראש כל קובץ + `LICENSE-THIRD-PARTY` |
-| מה שונה | תיעוד השינויים |
-| למה הוכנס ולא נעטף | הנימוק |
+| חבילה | גרסה נעולה | רישיון | מה נלקח | דרגה בסולם |
+|-------|-------------|--------|----------|-------------|
+| [`audio-separator`](https://github.com/nomadkaraoke/python-audio-separator) | 0.44.5 | MIT | inference של BS-Roformer, Mel-Band Roformer, MDX23C, MDX, Demucs | **3 — עטיפה במתאם שלנו** (`AudioSeparatorBackend`) |
+| [`pymss`](https://github.com/pymss-project/pymss) | 2.1.3 | MIT | inference + מרשם מודלים ומראה עצמאיים | **3 — עטיפה במתאם שלנו** (`PymssBackend`) |
+| [`python-stretch`](https://github.com/gregogiudici/python-stretch) | 0.3.1 | MIT | הזזת גובה (Signalsmith Stretch) | 1 — שימוש ישיר (Phase 4) |
+| [`torchfcpe`](https://pypi.org/project/torchfcpe/) | 0.0.4 | MIT | זיהוי F0 מהיר | 1 — שימוש ישיר (Phase 3) |
+| `ffmpeg` | build חיצוני | LGPL | קליטה, ייצוא, `loudnorm`/`alimiter`/`acompressor` | 1 — קישור דינמי, נקרא כתהליך |
 
-**כללים לקוד מוכנס:**
+**אף שורת קוד לא הועתקה לריפו הזה.** דרגה 4 בסולם ("הכנסת תת-קבוצה") טרם נדרשה.
+כשתידרש — ב-Phase 5, לחילוץ קוד ה-inference של RVC — תיפתח כאן טבלה נפרדת עם
+נתיב הקובץ וה-commit המדויק.
 
-1. הודעת הרישיון והזכויות של המקור **נשמרת בראש כל קובץ**.
-2. הקוד נכנס לתיקיית `vendor/` נפרדת — לא מעורבב בקוד שלנו.
-3. `ruff` ו-`mypy` **לא** רצים עליו (הוא לא שלנו לתקן).
-4. כל שינוי מתועד כאן.
-5. **לא נכנס שום קוד GPL/AGPL.**
+### 1.2 התאמות שנעשו מעל הספריות, ולמה
 
----
+הן חיות במתאמים שלנו, לא בקוד החיצוני:
 
-## 3. תלויות ריצה
-
-הרשימה המלאה נמצאת ב-`constraints.txt` (נעול ע"י ה-Compatibility Spike)
-ומבוקרת אוטומטית:
-
-```bash
-python tools/audit_constraints_licenses.py
-```
-
-**תוצאת הבדיקה האחרונה (17.8.2026, 86 חבילות):**
-
-| | |
-|---|---|
-| הפרות GPL / AGPL | **0** |
-| LGPL (מותר בקישור דינמי) | 1 — `soxr` |
-| ללא הצהרת רישיון | 1 — `llvmlite` |
+| מה | למה | איפה |
+|----|-----|------|
+| הורדות מודלים משלנו | ל-audio-separator אין checksum, אין resume ואין retry. על קובץ של 900MB זה ההבדל בין "עובד" לבין checkpoint חצי שנכתב בשקט | `resources/download.py` |
+| מסלול Intel XPU | `setup_torch_device` מכיר CUDA / MPS / DirectML בלבד ונופל בשקט למעבד על Arc | `AudioSeparatorBackend._apply_device` |
+| ביטול נרמול העוצמה | ברירת המחדל מנרמלת כל שכבה לשיא. אחרי זה סכום השכבות אינו המיקס המקורי | `AudioSeparatorBackend._build_separator` |
+| כתיבה ב-float | ברירת המחדל כותבת 16-bit. השכבות עוברות עוד כמה עיבודים | אותו מקום |
+| תרגום `overlap` | ב-Roformer השדה הוא אורך צעד בשניות, במקומות אחרים מחלק. ראה [phase-2.md §4](phase-reports/phase-2.md) | `AudioSeparatorBackend._apply_overlap` |
 
 ---
 
-## 4. מודלים
+## 2. משקולות מודלים
 
-⚠️ **רישיון MIT על ריפו לא אומר שהמודלים שבתוכו הם MIT.**
-מודלים מבוקרים בנפרד — טבלת ה-audit המלאה נמצאת ב-[models.md](models.md).
+**כל שורה אומתה מול `huggingface.co/api/models/<id>` ב-17.8.2026,**
+וכל כתובת נבדקה בפועל באותו יום. מקור האמת התפעולי הוא
+[`src/svc_engine/data/models.json`](../src/svc_engine/data/models.json);
+הטבלה כאן היא הסיכום לקריאה אנושית.
+
+| מזהה בקטלוג | מקור | רישיון | הפצה? |
+|--------------|------|--------|--------|
+| `sep_melband_kim` | [KimberleyJSN/melbandroformer](https://huggingface.co/KimberleyJSN/melbandroformer) | **MIT** | ✅ כן |
+| `sep_melband_kim_ft2` | [pcunwa/Kim-Mel-Band-Roformer-FT](https://huggingface.co/pcunwa/Kim-Mel-Band-Roformer-FT) | אין הצהרה | ⚠️ פרטי בלבד |
+| `sep_bs_roformer_1297` | UVR model repo | אין הצהרה | ⚠️ פרטי בלבד |
+| `karaoke_aufr33_viperx` | UVR model repo | אין הצהרה | ⚠️ פרטי בלבד |
+| `dereverb_anvuew` | [anvuew/dereverb_mel_band_roformer](https://huggingface.co/anvuew/dereverb_mel_band_roformer) | **GPL-3.0** | ⛔ לא |
+| `deecho_sucial_v2` | [Sucial/Dereverb-Echo_Mel_Band_Roformer](https://huggingface.co/Sucial/Dereverb-Echo_Mel_Band_Roformer) | **CC-BY-NC-SA-4.0** | ⛔ לא |
+| `denoise_aufr33` | [poiqazwsx/melband-roformer-denoise](https://huggingface.co/poiqazwsx/melband-roformer-denoise) | אין הצהרה | ⚠️ פרטי בלבד |
+
+**קובצי ה-`.yaml`** של המודלים מגיעים מריפו ההפצה של
+[`python-audio-separator`](https://github.com/nomadkaraoke/python-audio-separator/releases/tag/model-configs) (MIT).
+
+### איך זה נאכף
+
+`ModelSpec.license.is_redistributable` הוא המקור היחיד לאמת בקוד.
+`allow_private_models=False` מכבה בדיוק את השורות שאינן ✅ ומדווח בעברית
+למה שלב דילג. `tools/check_model_catalogue.py` רץ ב-CI ונכשל אם נוספה
+רשומה בלי audit רישוי.
+
+---
+
+## 3. מקורות ייחוס שנקראו אך לא נלקח מהם קוד
+
+לפי [reuse-policy.md](reuse-policy.md), לפני כל רכיב נבדק מה כבר קיים.
+
+| מקור | מה נבדק ב-Phase 2 | התוצאה |
+|------|---------------------|---------|
+| [mason369/AI-RVC](https://github.com/mason369/AI-RVC) (MIT) | סדר צינור ההפרדה, DeReverb, ניהול מודלים | הסדר אומץ כרעיון; הקוד לא — הוא עוטף את אותה `audio-separator` שאנחנו עוטפים ישירות |
+| [IAHispano/Applio](https://github.com/IAHispano/Applio) (MIT) | ניהול והורדת מודלים | לא נדרש כאן; רלוונטי ל-Phase 9 (אימון) |
+| [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) (MIT) | — | לא נדרש עד Phase 5 |
+
+---
+
+## 4. מה ייכנס לכאן בשלבים הבאים
+
+| שלב | מה צפוי | דרגה צפויה בסולם |
+|------|----------|--------------------|
+| Phase 3 | משקולות RMVPE (MIT, `lj1995/VoiceConversionWebUI`) | 1 — שימוש ישיר |
+| Phase 5 | קוד ה-inference של RVC v2, ו-ContentVec/HuBERT | **4 — הכנסת תת-קבוצה.** מחייב נתיבי קבצים ו-commit מדויקים כאן |
+| Phase 9 | מנגנון האימון של Applio, מודל בסיס TITAN (Apache-2.0) | 3–4 |
+| Phase 10 | Seed-VC (GPL-3.0) | **סביבה מבודדת בלבד — לעולם לא בליבה** |

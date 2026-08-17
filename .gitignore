@@ -31,8 +31,14 @@ checkpoints/
 *.ogg
 *.aac
 testdata/
-benchmark/results/
 benchmark/audio/
+tests/fixtures/
+# תוצאות בנצ'מרק: השמע לא נכנס, אבל המספרים כן —
+# הם העדות שעליה מסתמכות ההחלטות. (הסדר כאן חשוב: git לא נכנס
+# לתיקייה שכולה מוחרגת, ולכן צריך להחריג קבצים ולא את התיקייה.)
+benchmark/results/**
+!benchmark/results/**/
+!benchmark/results/**/results.json
 
 # ── פלט ריצה ───────────────────────────────────────
 cache/
