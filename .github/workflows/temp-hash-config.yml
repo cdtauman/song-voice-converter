@@ -1,0 +1,19 @@
+name: TEMP hash model config
+
+on:
+  push:
+    branches: ["phase/2-separation"]
+  workflow_dispatch:
+
+jobs:
+  hash-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download exact production config and print SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/vocals_mel_band_roformer.yaml'
+          curl -fL --retry 3 --retry-delay 2 "$url" -o vocals_mel_band_roformer.yaml
+          wc -c vocals_mel_band_roformer.yaml
+          sha256sum vocals_mel_band_roformer.yaml
