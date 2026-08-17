@@ -75,9 +75,9 @@ def _cmd_verify_backends(args: argparse.Namespace) -> int:
                     mark = "—"
                 elif not entry.get("ok"):
                     mark = "❌"
-                elif device == "cpu":
-                    mark = "✅"
-                elif entry.get("end_to_end") and entry.get("production_eligible"):
+                elif device == "cpu" or (
+                    entry.get("end_to_end") and entry.get("production_eligible")
+                ):
                     mark = "✅"
                 else:
                     mark = "🟡"
