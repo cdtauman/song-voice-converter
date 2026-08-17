@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 import traceback
+from pathlib import Path
 from typing import Any
 
 RESULT: dict[str, Any] = {}
@@ -161,146 +162,26 @@ def _xpu() -> dict[str, Any]:
 # per-component accelerator workloads
 # --------------------------------------------------------------------------- #
 
-def _workload_separation(device: str) -> dict[str, Any]:
-    """The operator set a RoFormer separator needs: STFT, attention, iSTFT."""
-    import torch
-
-    sr, seconds = 44100, 2
-    wav = torch.randn(1, sr * seconds, device=device)
-    window = torch.hann_window(2048, device=device)
-
-    spec = torch.stft(wav, n_fft=2048, hop_length=512, window=window, return_complex=True)
-    mag = spec.abs().transpose(1, 2)                        # (batch, frames, bins)
-    feat = mag[..., :512]
-
-    attn = torch.nn.MultiheadAttention(512, 8, batch_first=True).to(device)
-    with torch.no_grad():
-        out, _ = attn(feat, feat, feat)
-    mask = torch.sigmoid(out).transpose(1, 2)
-    masked = spec.clone()
-    masked[:, :512, :] = spec[:, :512, :] * mask
-
-    back = torch.istft(masked, n_fft=2048, hop_length=512, window=window, length=wav.shape[-1])
-    _sync(device)
-    return {
-        "ops": "stft+mha+istft",
-        "output_frames": int(back.shape[-1]),
-        "length_preserved": bool(back.shape[-1] == wav.shape[-1]),
-        "finite": bool(torch.isfinite(back).all()),
-    }
-
-
-def _workload_f0(device: str) -> dict[str, Any]:
-    """Prefer the real F0 model; fall back to its operator set if weights are absent."""
-    import torch
-
-    sr = 16000
-    t = torch.arange(sr * 2, dtype=torch.float32) / sr
-    tone = (0.4 * torch.sin(2 * torch.pi * 220.0 * t)).unsqueeze(0)
-
-    try:
-        import torchfcpe
-
-        model = torchfcpe.spawn_bundled_infer_model(device=device)
-        with torch.no_grad():
-            f0 = model.infer(tone.unsqueeze(-1).to(device), sr=sr, decoder_mode="local_argmax")
-        _sync(device)
-        median = float(f0[f0 > 0].median()) if (f0 > 0).any() else 0.0
-        return {
-            "ops": "torchfcpe end-to-end",
-            "end_to_end": True,
-            "median_hz": round(median, 1),
-            "plausible": bool(180 < median < 260),
-            "finite": bool(torch.isfinite(f0).all()),
-        }
-    except Exception as exc:  # noqa: BLE001  weights may be unavailable offline
-        conv = torch.nn.Sequential(
-            torch.nn.Conv1d(1, 128, 9, padding=4),
-            torch.nn.GELU(),
-            torch.nn.Conv1d(128, 128, 9, padding=4),
-            torch.nn.GELU(),
-            torch.nn.Conv1d(128, 360, 1),
-        ).to(device)
-        with torch.no_grad():
-            out = conv(tone.unsqueeze(0).to(device))
-        _sync(device)
-        return {
-            "ops": "conv1d stack (fallback)",
-            "end_to_end": False,
-            "fallback_reason": f"{type(exc).__name__}: {exc}"[:200],
-            "output_shape": list(out.shape),
-            "finite": bool(torch.isfinite(out).all()),
-        }
-
-
-def _workload_conversion(device: str) -> dict[str, Any]:
-    """The operator set RVC inference needs: conv encoder, transformer, upsampling."""
-    import torch
-
-    frames, channels = 400, 256
-    x = torch.randn(1, channels, frames, device=device)
-
-    encoder = torch.nn.Sequential(
-        torch.nn.Conv1d(channels, channels, 5, padding=2),
-        torch.nn.LeakyReLU(0.1),
-        torch.nn.Conv1d(channels, channels, 5, padding=2),
-    ).to(device)
-    layer = torch.nn.TransformerEncoderLayer(
-        d_model=channels, nhead=8, dim_feedforward=1024, batch_first=True
-    ).to(device)
-    upsample = torch.nn.ConvTranspose1d(channels, 1, 16, stride=8, padding=4).to(device)
-
-    with torch.no_grad():
-        h = encoder(x)
-        h = layer(h.transpose(1, 2)).transpose(1, 2)
-        wav = upsample(h)
-    _sync(device)
-    return {
-        "ops": "conv1d+transformer+convtranspose",
-        "output_shape": list(wav.shape),
-        "finite": bool(torch.isfinite(wav).all()),
-    }
-
-
-COMPONENT_WORKLOADS = {
-    "separation": _workload_separation,
-    "f0": _workload_f0,
-    "conversion": _workload_conversion,
-}
-
-
 @probe("component_backends")
 def _component_backends() -> dict[str, Any]:
-    """Record, per component and per accelerator, whether real work succeeded."""
+    """Record, per component and per accelerator, whether real work succeeded.
+
+    The workloads live in `svc_engine/compute/verify.py` so that the spike and
+    the shipped `svc verify-backends` command prove support exactly the same
+    way. The module is loaded straight off disk: candidate environments do not
+    have SongVoice installed, and some of them run a Python version the project
+    does not even support.
+    """
     import torch  # noqa: F401  (fail fast and clearly if torch is missing)
 
-    devices = ["cpu", *_accelerators()]
-    matrix: dict[str, dict[str, Any]] = {}
+    src = str(Path(__file__).resolve().parent.parent / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
 
-    for component, workload in COMPONENT_WORKLOADS.items():
-        matrix[component] = {}
-        for device in devices:
-            started = time.perf_counter()
-            try:
-                data = workload(device)
-                matrix[component][device] = {
-                    "ok": True,
-                    "seconds": round(time.perf_counter() - started, 2),
-                    **data,
-                }
-            except Exception as exc:  # noqa: BLE001
-                matrix[component][device] = {
-                    "ok": False,
-                    "seconds": round(time.perf_counter() - started, 2),
-                    "error": f"{type(exc).__name__}: {exc}"[:300],
-                }
+    from svc_engine.compute.verify import available_devices, verify_all
 
-    # python-stretch is a C++ DSP library with no GPU path. CPU here is the right
-    # place for the work, not a fallback from a failure.
-    matrix["pitch_shift"] = {
-        "cpu": {"ok": True, "ops": "python-stretch (cpu-only by design)"},
-    }
-    return {"devices": devices, "matrix": matrix}
+    devices = available_devices()
+    return {"devices": devices, "matrix": verify_all(devices)}
 
 
 # --------------------------------------------------------------------------- #

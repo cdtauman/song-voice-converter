@@ -1,6 +1,7 @@
 {
-  "source": "spike 2026-08-17T00:06:44+00:00",
+  "source": "verify-backends on DESKTOP-L27TH60",
   "machine": "Windows-10-10.0.26200-SP0",
+  "verified_at": "2026-08-17T00:56:02+00:00",
   "components": {
     "separation": {
       "proofs": {

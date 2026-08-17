@@ -15,8 +15,12 @@
 | [docs/testing.md](docs/testing.md) | תוכנית הבדיקות ומערכת ה-Benchmark להשוואת איכות |
 | [docs/decisions.md](docs/decisions.md) | החלטות שכבר התקבלו + החלטות שממתינות להכרעה שלך |
 | [docs/models.md](docs/models.md) | טבלת audit רישוי מלאה למודלים ולספריות, כולל גדלים |
+| [docs/reuse-policy.md](docs/reuse-policy.md) | **מדיניות שימוש חוזר** — מתי לוקחים קוד קיים ומתי כותבים בעצמנו |
+| [docs/third-party.md](docs/third-party.md) | מרשם כל הקוד החיצוני: ריפו, קבצים, commit, רישיון |
+| [docs/backlog.md](docs/backlog.md) | רעיונות שנדחו מהשלב הנוכחי |
 | [docs/changelog.md](docs/changelog.md) | יומן השינויים במסמכי התכנון, כולל תיקונים עובדתיים שאומתו |
-| [PLAN-FULL.md](PLAN-FULL.md) | כל המסמכים בקובץ אחד, להורדה או להדפסה |
+| [docs/phase-reports/](docs/phase-reports/) | דוח סיום לכל שלב שהושלם |
+| [PLAN-FULL.md](PLAN-FULL.md) | כל מסמכי התכנון בקובץ אחד |
 
 ## איך מתקדמים מכאן
 
