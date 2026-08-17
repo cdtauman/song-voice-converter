@@ -149,7 +149,31 @@ class SeparationPipeline:
         """The independent second source, for when a model cannot be fetched."""
         return PymssBackend(models_dir=self.paths.models, work_dir=self.paths.work)
 
+    def _implementation_id(self, model_id: str) -> str:
+        """Stable proof key for one backend/checkpoint pair."""
+        return f"{self.backend.info().backend_id}:{model_id}"
+
+    def _device_for_model(self, model_id: str) -> DeviceInfo:
+        """Choose acceleration only when this exact model was proven end to end.
+
+        Compatibility evidence for a sibling model must never authorize this
+        checkpoint. Old injected matrices used by tests may contain generic proof
+        only; they retain their old behavior until implementation-specific proof
+        exists in that matrix.
+        """
+        support = self.matrix.get(Component.SEPARATION)
+        if support.implementation_proofs:
+            return self.matrix.device_for_implementation(
+                Component.SEPARATION,
+                self._implementation_id(model_id),
+                self.manager,
+            )
+        return self.matrix.device_for(Component.SEPARATION, self.manager)
+
     def device(self) -> DeviceInfo:
+        """Device for the primary production separation model."""
+        if "sep_melband_kim" in self.registry:
+            return self._device_for_model("sep_melband_kim")
         return self.matrix.device_for(Component.SEPARATION, self.manager)
 
     def run(
@@ -180,11 +204,14 @@ class SeparationPipeline:
         )
         timings["load"] = time.perf_counter() - started
 
-        device = self.device()
-        hint = DeviceHint.from_device(device)
-        reset_peak(hint)
         models = self._resolve_models(profile, notes)
         self.downloader.check_space_for(models)
+
+        # The outcome's device describes the primary production model. Ensemble
+        # members are routed independently below and may legitimately use CPU.
+        device = self._device_for_model(models[0].id)
+        primary_hint = DeviceHint.from_device(device)
+        reset_peak(primary_hint)
 
         steps = tuple(dict.fromkeys(cleanup)) + profile.cleanup
         # Separation is the bulk of the work; cleanup passes are each about as
@@ -193,14 +220,23 @@ class SeparationPipeline:
         done_units = 0
 
         results: list[Stems] = []
+        model_backends: list[tuple[str, str]] = []
         for spec in models:
             report(done_units / total_units * 0.95, _MESSAGE_SEPARATE)
+            model_device = self._device_for_model(spec.id)
+            model_hint = DeviceHint.from_device(model_device)
+            model_backends.append((spec.id, model_device.backend.value))
             started = time.perf_counter()
-            stems, used = self._separate_one(mix, spec.id, profile, hint)
+            stems, used = self._separate_one(mix, spec.id, profile, model_hint)
             timings[f"separate:{spec.id}"] = time.perf_counter() - started
             fallbacks.extend(used)
             results.append(stems)
             done_units += 1
+
+        distinct_backends = {backend for _model, backend in model_backends}
+        if len(distinct_backends) > 1:
+            detail = ", ".join(f"{model}: {backend}" for model, backend in model_backends)
+            notes.append(f"מודלי ההפרדה רצו במסלולים שונים לפי האימות שלהם: {detail}.")
 
         if len(results) > 1:
             report(done_units / total_units * 0.95, _MESSAGE_COMBINE)
@@ -229,9 +265,18 @@ class SeparationPipeline:
             if vocals is None:
                 notes.append("לא התקבלה שכבת שירה, אז שלבי הניקוי לא רצו.")
             else:
+                # None of the cleanup checkpoints has its own XPU end-to-end
+                # proof yet. Keep optional cleanup on CPU until each exact model
+                # earns one rather than inheriting the main separator's proof.
+                cleanup_hint = DeviceHint(backend=ComputeBackend.CPU)
+                if primary_hint.backend is not ComputeBackend.CPU:
+                    notes.append(
+                        "שלבי הניקוי רצו על המעבד כי מודלי הניקוי טרם אומתו "
+                        "מקצה לקצה על המאיץ."
+                    )
                 started = time.perf_counter()
                 cleanup_result = self._run_cleanup(
-                    vocals, steps, hint, profile,
+                    vocals, steps, cleanup_hint, profile,
                     lambda _step, message: report(
                         (done_units + 0.5) / total_units * 0.95, message
                     ),
@@ -253,7 +298,7 @@ class SeparationPipeline:
             cleanup=cleanup_result,
             fallback_steps=tuple(fallbacks),
             notes_he=tuple(dict.fromkeys(notes)),
-            peak_memory=measure_peak(hint),
+            peak_memory=measure_peak(primary_hint),
         )
 
     def write(self, outcome: SeparationOutcome, out_dir: Path | str) -> dict[StemKind, Path]:
@@ -313,7 +358,7 @@ class SeparationPipeline:
                 used.append(f"{model_id}:{step.reason_he}")
 
         def attempt(rung: ResourcePlan) -> Stems:
-            device = (
+            attempt_device = (
                 hint
                 if rung.backend is hint.backend
                 else DeviceHint(backend=ComputeBackend.CPU)
@@ -326,7 +371,7 @@ class SeparationPipeline:
                 segment_size=rung.segment_size,
             )
             try:
-                return self.backend.separate(mix, request, device)
+                return self.backend.separate(mix, request, attempt_device)
             except Exception:
                 # Free the card before the next, smaller attempt -- otherwise
                 # the retry meets the same exhausted allocator.
