@@ -5,7 +5,7 @@
   "components": {
     "separation": {
       "proofs": {
-        "xpu": "end_to_end"
+        "xpu": "ops"
       },
       "implementation_proofs": {
         "roformer-operator-set": {
@@ -15,7 +15,7 @@
           "xpu": "end_to_end"
         }
       },
-      "note_he": "הפרדה: מודל Mel-Band RoFormer הראשי (sep_melband_kim דרך audio-separator) אומת מקצה לקצה על Intel XPU ב-Phase 2; האישור אינו חל אוטומטית על מודלי הפרדה אחרים."
+      "note_he": "הפרדה: מודל Mel-Band RoFormer הראשי (sep_melband_kim דרך audio-separator) אומת מקצה לקצה על Intel XPU ב-Phase 2. ההוכחה הגנרית נשארת ברמת אופרטורים; רק המימוש המדויק רשאי להשתמש ב-XPU."
     },
     "f0": {
       "proofs": {
