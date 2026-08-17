@@ -39,7 +39,12 @@ from svc_engine.compute import (
     load_matrix,
     run_with_oom_ladder,
 )
-from svc_engine.compute.memory import suggested_segment_size
+from svc_engine.compute.memory import (
+    PeakMemory,
+    measure_peak,
+    reset_peak,
+    suggested_segment_size,
+)
 from svc_engine.config import Paths
 from svc_engine.config import paths as default_paths
 from svc_engine.errors import EngineError, ErrorCode
@@ -87,6 +92,7 @@ class SeparationOutcome:
     cleanup: CleanupResult | None = None
     fallback_steps: tuple[str, ...] = ()
     notes_he: tuple[str, ...] = ()
+    peak_memory: PeakMemory | None = None
 
     @property
     def total_seconds(self) -> float:
@@ -176,6 +182,7 @@ class SeparationPipeline:
 
         device = self.device()
         hint = DeviceHint.from_device(device)
+        reset_peak(hint)
         models = self._resolve_models(profile, notes)
         self.downloader.check_space_for(models)
 
@@ -246,6 +253,7 @@ class SeparationPipeline:
             cleanup=cleanup_result,
             fallback_steps=tuple(fallbacks),
             notes_he=tuple(dict.fromkeys(notes)),
+            peak_memory=measure_peak(hint),
         )
 
     def write(self, outcome: SeparationOutcome, out_dir: Path | str) -> dict[StemKind, Path]:

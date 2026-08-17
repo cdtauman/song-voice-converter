@@ -19,7 +19,7 @@ from svc_engine.backends.separation import (
     Stems,
 )
 from svc_engine.compute import ComputeBackend, ResourcePlan
-from svc_engine.compute.memory import suggested_segment_size
+from svc_engine.compute.memory import measure_peak, reset_peak, suggested_segment_size
 from svc_engine.compute.oom import is_oom_error, oom_ladder, run_with_oom_ladder
 from svc_engine.errors import EngineError, ErrorCode
 from svc_engine.resources import load_registry
@@ -217,6 +217,35 @@ def test_an_ordinary_error_is_not_mistaken_for_out_of_memory() -> None:
 def test_cpu_window_size_does_not_follow_free_ram() -> None:
     """Otherwise the same job gives different output depending on machine load."""
     assert suggested_segment_size(DeviceHint(backend=ComputeBackend.CPU), 256) == 256
+
+
+def test_suggested_window_never_exceeds_the_profile_it_was_given() -> None:
+    """The profile is the ceiling; memory can only lower it."""
+    for backend in ComputeBackend:
+        assert suggested_segment_size(DeviceHint(backend=backend), 128) <= 128
+
+
+def test_a_tight_vram_budget_lowers_the_window() -> None:
+    hint = DeviceHint(backend=ComputeBackend.XPU, max_vram_mb=2048)
+    assert suggested_segment_size(hint, 512) < 512
+
+
+# --------------------------------------------------------------------------- #
+# memory instrumentation
+# --------------------------------------------------------------------------- #
+
+def test_host_peak_memory_is_actually_readable() -> None:
+    """This silently returned None until the Win32 handle was declared properly."""
+    peak = measure_peak(DeviceHint(backend=ComputeBackend.CPU))
+    assert peak.host_mb is not None
+    assert peak.host_mb > 0
+    assert peak.summary() != "not measurable"
+
+
+def test_reset_peak_is_safe_on_a_machine_without_that_accelerator() -> None:
+    for backend in ComputeBackend:
+        reset_peak(DeviceHint(backend=backend))  # must never raise
+        assert measure_peak(DeviceHint(backend=backend)).backend == backend.value
 
 
 # --------------------------------------------------------------------------- #
