@@ -3,6 +3,8 @@ name: TEMP hash model config
 on:
   push:
     branches: ["phase/2-separation"]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
