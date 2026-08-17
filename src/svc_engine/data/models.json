@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Licences verified against the HuggingFace API on 2026-08-17. Every URL was reachability-checked the same day. Do not add a model here without both. See docs/models.md section 1.",
+  "note": "Licences verified against the HuggingFace API on 2026-08-17. Every URL was reachability-checked the same day. Redistributable model files are SHA-256 pinned. Do not add a model here without both licence provenance and an integrity decision. See docs/models.md section 1.",
   "models": {
     "sep_melband_kim": {
       "kind": "separation",
@@ -20,16 +20,17 @@
         {
           "name": "vocals_mel_band_roformer.ckpt",
           "size_bytes": 913106900,
-          "sha256": null,
+          "sha256": "87201f4d31afb5bc79993230fc49446918425574db48c01c405e44f365c7559e",
           "urls": [
             "https://huggingface.co/KimberleyJSN/melbandroformer/resolve/main/MelBandRoformer.ckpt"
           ]
         },
         {
           "name": "vocals_mel_band_roformer.yaml",
-          "size_bytes": 944,
-          "sha256": null,
+          "size_bytes": 895,
+          "sha256": "df5c6a6664c3a589fd6fa94b83f1a97c11bcdb341c801eb23719045dc5eed7e2",
           "urls": [
+            "https://huggingface.co/lainlives/audio-separator-models-old/resolve/49523422a02b68806a4471ab8806fc23c68a52c5/vocals_mel_band_roformer.yaml",
             "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/vocals_mel_band_roformer.yaml"
           ]
         }
