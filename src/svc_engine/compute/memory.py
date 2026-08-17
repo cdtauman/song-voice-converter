@@ -197,18 +197,28 @@ def suggested_segment_size(device: DeviceHint, default: int = 256) -> int:
     reading is not a reason to shrink the window -- and doing so silently
     changed the result depending on what else the machine happened to be
     running, which made two runs of the same job incomparable.
+
+    An explicit ``max_vram_mb`` is authoritative even when this machine cannot
+    query the target accelerator. That keeps CI and offline planning honest: a
+    declared 2GB budget must never be treated as if 512-sized windows were safe
+    just because the runner has no XPU/CUDA device to inspect.
     """
     if device.backend is ComputeBackend.CPU:
         return default
 
     free = available_memory_gb(device)
-    if free is None:
+    explicit = device.max_vram_mb / 1024.0 if device.max_vram_mb else None
+
+    if free is None and explicit is None:
         return default
+    if free is None:
+        budget = explicit
+    elif explicit is None:
+        budget = free
+    else:
+        budget = min(free, explicit)
 
-    budget = free
-    if device.max_vram_mb:
-        budget = min(budget, device.max_vram_mb / 1024.0)
-
+    assert budget is not None
     for threshold, segment in SEGMENT_BY_MEMORY:
         if budget >= threshold:
             return min(default, segment)
