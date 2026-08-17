@@ -328,7 +328,13 @@ def run_songs(
 
     for song in songs:
         for quality in qualities:
-            for cleanup in cleanup_sets:
+            # Cleanup is an extra comparison of the Balanced path only. Applying
+            # it to Fast/Max would multiply expensive runs and contradict the
+            # CLI contract for --with-cleanup.
+            applicable_cleanup = (
+                cleanup_sets if quality is QualityLevel.BALANCED else [()]
+            )
+            for cleanup in applicable_cleanup:
                 label = f"{song.stem}__{quality.value}"
                 if cleanup:
                     label += "__" + "+".join(s.value for s in cleanup)
