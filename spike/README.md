@@ -34,15 +34,33 @@ python spike/run_spike.py
 
 | בדיקה | מה היא מוודאת |
 |-------|----------------|
-| `torch` | גרסה, זמינות CUDA, ושכפול מטריצות אמיתי על המכשיר |
+| `torch` | גרסה, אילו מאיצים זמינים, וכפל מטריצות אמיתי |
+| `xpu` | **Intel: זיהוי + כפל מטריצות על ה-GPU + השוואת המספרים מול המעבד** |
 | `numpy` / `scipy` | נטענים |
 | `soundfile` | כתיבה וקריאה של WAV הלוך ושוב |
 | `librosa` | ניתוח אמיתי (YIN על צליל ידוע) |
 | `pyloudnorm` | מדידת LUFS על אות ידוע |
 | `pitch_shift` | **הזזת גובה של אוקטבה ואימות שהאורך נשמר בדיוק** |
 | `audio_separator` | ייבוא ונוכחות ה-API (הורדת מודלים היא Phase 2) |
-| `torchfcpe` | נטען |
+| `component_backends` | **עומס אמיתי לכל רכיב, על כל מאיץ שקיים** — פירוט למטה |
 | `ffmpeg` | קיים, ויש בו `loudnorm`, `alimiter`, `acompressor`, `aresample` |
+
+## ⭐ כלל ההוכחה
+
+> רכיב נחשב נתמך על מאיץ **רק אחרי שעומס אמיתי רץ עליו בהצלחה.**
+> התקנה נקייה, ייבוא מוצלח או `is_available() == True` לא מוכיחים כלום.
+> מה שלא הוכח — רץ על CPU.
+
+העומס לכל רכיב הוא סט האופרטורים שהוא באמת צריך:
+
+| רכיב | מה מורץ על המאיץ |
+|------|-------------------|
+| `separation` | STFT ← Multi-Head Attention ← iSTFT (בדיוק מה ש-RoFormer צריך) |
+| `f0` | המודל האמיתי של `torchfcpe`; אם המשקולות לא זמינות — מחסנית קונבולוציות |
+| `conversion` | Conv1d ← Transformer ← ConvTranspose (סט האופרטורים של RVC) |
+| `pitch_shift` | CPU בלבד — `python-stretch` היא ספריית C++ בלי מסלול GPU |
+
+התוצאה נרשמת לכל רכיב ולכל מאיץ בנפרד. **אין הנחה שמסלול אחד חייב לעבוד לכולם.**
 
 ## התוצרים
 
@@ -51,16 +69,20 @@ python spike/run_spike.py
 | `spike/results/<timestamp>/results.json` | הנתונים הגולמיים |
 | `docs/compat-matrix.md` | טבלה קריאה — מה עבר, מה נפל, ולמה |
 | `constraints.txt` | **מטריצת התלויות הנעולה**, נכתב רק אם מועמד עבר במלואו |
+| `src/svc_engine/data/compute-support.json` | **מטריצת התמיכה לכל רכיב** — מה שהאפליקציה קוראת בזמן ריצה |
 
 ## מועמדים
 
-| מזהה | תיאור | דורש NVIDIA |
-|------|-------|--------------|
-| `cpu-311` | Python 3.11 + torch CPU | לא |
-| `cpu-312` | Python 3.12 + torch CPU | לא |
-| `cu128-311` | Python 3.11 + torch CUDA 12.8 | כן |
-| `cu126-311` | Python 3.11 + torch CUDA 12.6 | כן |
-| `cu128-312` | Python 3.12 + torch CUDA 12.8 | כן |
+| מזהה | תיאור | דורש |
+|------|-------|-------|
+| `cpu-311` | Python 3.11 + torch CPU | — |
+| `cpu-312` | Python 3.12 + torch CPU | — |
+| `xpu-311` | Python 3.11 + torch XPU (Intel) | כרטיס Intel |
+| `cu128-311` | Python 3.11 + torch CUDA 12.8 | כרטיס NVIDIA |
+| `cu126-311` | Python 3.11 + torch CUDA 12.6 | כרטיס NVIDIA |
+
+מועמד שדורש חומרה שאינה קיימת מסומן `skipped` — **לא** `pass`.
+מועמד מאיץ שמותקן בהצלחה אבל לא מצליח להשתמש במאיץ בפועל מסומן `fail`.
 
 ## אם שום מועמד לא עובר
 

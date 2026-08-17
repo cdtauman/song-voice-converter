@@ -1,0 +1,28 @@
+{
+  "source": "spike 2026-08-17T00:06:44+00:00",
+  "machine": "Windows-10-10.0.26200-SP0",
+  "components": {
+    "separation": {
+      "proofs": {
+        "xpu": "ops"
+      },
+      "note_he": "הפרדה: אומת על xpu (עומס אמיתי ברמת האופרטורים)."
+    },
+    "f0": {
+      "proofs": {
+        "xpu": "end_to_end"
+      },
+      "note_he": "זיהוי גובה: אומת על xpu (מודל מלא)."
+    },
+    "conversion": {
+      "proofs": {
+        "xpu": "ops"
+      },
+      "note_he": "המרת קול: אומת על xpu (עומס אמיתי ברמת האופרטורים)."
+    },
+    "pitch_shift": {
+      "proofs": {},
+      "note_he": "רץ על המעבד מעצם טבעו — ספריית DSP ב-C++ בלי מסלול GPU."
+    }
+  }
+}

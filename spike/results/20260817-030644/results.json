@@ -1,0 +1,533 @@
+{
+  "machine": "Windows-10-10.0.26200-SP0",
+  "gpu_detected": false,
+  "outcomes": [
+    {
+      "candidate": "cpu-311",
+      "note": "Python 3.11 + torch CPU",
+      "status": "pass",
+      "reason": "",
+      "install_seconds": 37.5,
+      "resolved": {
+        "audio-separator": "0.44.5",
+        "librosa": "0.11.0",
+        "numpy": "2.4.6",
+        "onnxruntime": "1.28.0",
+        "pyloudnorm": "0.2.0",
+        "python-stretch": "0.3.1",
+        "scipy": "1.17.1",
+        "soundfile": "0.14.0",
+        "soxr": "1.1.0",
+        "torch": "2.13.0+cpu",
+        "torchfcpe": "0.0.4"
+      },
+      "smoke": {
+        "all_required_ok": true,
+        "probes": {
+          "python": {
+            "ok": true,
+            "seconds": 0.0,
+            "version": "3.11.15",
+            "executable": "C:\\dev\\song-voice-converter\\spike\\.venvs\\cpu-311\\Scripts\\python.exe"
+          },
+          "torch": {
+            "ok": true,
+            "seconds": 52.43,
+            "version": "2.13.0+cpu",
+            "built_cuda": null,
+            "built_xpu": null,
+            "cuda_available": false,
+            "xpu_available": false,
+            "accelerators": [],
+            "matmul_device": "cpu",
+            "matmul_ok": true,
+            "matmul_ms": 75.2
+          },
+          "xpu": {
+            "ok": false,
+            "seconds": 0.0,
+            "error": "RuntimeError: torch.xpu is present but reports no available device",
+            "trace": "Traceback (most recent call last):\n  File \"C:\\dev\\song-voice-converter\\spike\\smoke_test.py\", line 29, in wrap\n    data = fn()\n           ^^^^\n  File \"C:\\dev\\song-voice-converter\\spike\\smoke_test.py\", line 125, in _xpu\n    raise RuntimeError(\"torch.xpu is present but reports no available device\")\nRuntimeError: torch.xpu is present but reports no available device\n"
+          },
+          "component_backends": {
+            "ok": true,
+            "seconds": 60.33,
+            "devices": [
+              "cpu"
+            ],
+            "matrix": {
+              "separation": {
+                "cpu": {
+                  "ok": true,
+                  "seconds": 0.42,
+                  "ops": "stft+mha+istft",
+                  "output_frames": 88200,
+                  "length_preserved": true,
+                  "finite": true
+                }
+              },
+              "f0": {
+                "cpu": {
+                  "ok": true,
+                  "seconds": 59.76,
+                  "ops": "torchfcpe end-to-end",
+                  "end_to_end": true,
+                  "median_hz": 220.1,
+                  "plausible": true,
+                  "finite": true
+                }
+              },
+              "conversion": {
+                "cpu": {
+                  "ok": true,
+                  "seconds": 0.15,
+                  "ops": "conv1d+transformer+convtranspose",
+                  "output_shape": [
+                    1,
+                    1,
+                    3200
+                  ],
+                  "finite": true
+                }
+              },
+              "pitch_shift": {
+                "cpu": {
+                  "ok": true,
+                  "ops": "python-stretch (cpu-only by design)"
+                }
+              }
+            }
+          },
+          "numpy": {
+            "ok": true,
+            "seconds": 0.0,
+            "version": "2.4.6"
+          },
+          "soundfile": {
+            "ok": true,
+            "seconds": 0.3,
+            "version": "0.14.0",
+            "roundtrip_ok": true
+          },
+          "librosa": {
+            "ok": true,
+            "seconds": 48.44,
+            "version": "0.11.0",
+            "yin_median_hz": 440.4
+          },
+          "pyloudnorm": {
+            "ok": true,
+            "seconds": 0.2,
+            "version": "?",
+            "lufs": -9.07
+          },
+          "pitch_shift": {
+            "ok": true,
+            "seconds": 0.13,
+            "module": "python_stretch",
+            "input_frames": 44100,
+            "output_frames": 44100,
+            "length_preserved": true,
+            "finite": true
+          },
+          "audio_separator": {
+            "ok": true,
+            "seconds": 3.69,
+            "importable": true,
+            "has_load_model": true,
+            "has_separate": true
+          },
+          "torchfcpe": {
+            "ok": true,
+            "seconds": 0.0,
+            "importable": true,
+            "version": "?"
+          },
+          "onnxruntime": {
+            "ok": true,
+            "seconds": 0.0,
+            "version": "1.28.0",
+            "providers": [
+              "AzureExecutionProvider",
+              "CPUExecutionProvider"
+            ]
+          },
+          "ffmpeg": {
+            "ok": true,
+            "seconds": 1.34,
+            "path": "C:\\Users\\cdtauman\\AppData\\Local\\Microsoft\\WinGet\\Links\\ffmpeg.EXE",
+            "version": "ffmpeg version 8.1.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+            "filters": {
+              "loudnorm": true,
+              "alimiter": true,
+              "acompressor": true,
+              "aresample": true
+            },
+            "all_filters_present": true
+          }
+        }
+      },
+      "freeze": [
+        "absl-py==2.5.0",
+        "audio-separator==0.44.5",
+        "audioread==3.1.0",
+        "beartype==0.18.5",
+        "certifi==2026.7.22",
+        "cffi==2.1.1",
+        "charset-normalizer==3.5.1",
+        "colorama==0.4.6",
+        "cython==3.2.9",
+        "decorator==5.3.1",
+        "diffq-fixed==0.2.4",
+        "einops==0.8.2",
+        "filelock==3.32.3",
+        "flatbuffers==25.12.19",
+        "fsspec==2026.7.0",
+        "hyper-connections==0.4.11",
+        "idna==3.18",
+        "jinja2==3.1.6",
+        "joblib==1.5.3",
+        "julius==0.2.8",
+        "lazy-loader==0.5",
+        "librosa==0.11.0",
+        "llvmlite==0.49.0",
+        "local-attention==1.11.2",
+        "markupsafe==3.0.3",
+        "ml-collections==1.1.0",
+        "ml-dtypes==0.6.0",
+        "mpmath==1.3.0",
+        "msgpack==1.2.1",
+        "narwhals==2.24.0",
+        "networkx==3.6.1",
+        "numba==0.67.0",
+        "numpy==2.4.6",
+        "onnx-weekly==1.23.0.dev20260805",
+        "onnx2torch-py313==1.6.0",
+        "onnxruntime==1.28.0",
+        "packaging==26.3",
+        "pillow==12.3.0",
+        "platformdirs==4.11.3",
+        "pooch==1.9.0",
+        "protobuf==7.35.1",
+        "pycparser==3.0",
+        "pydub==0.25.1",
+        "pyloudnorm==0.2.0",
+        "python-stretch==0.3.1",
+        "pyyaml==6.0.3",
+        "requests==2.34.2",
+        "resampy==0.4.3",
+        "rotary-embedding-torch==0.6.5",
+        "samplerate==0.1.0",
+        "scikit-learn==1.9.0",
+        "scipy==1.17.1",
+        "setuptools==78.1.0",
+        "six==1.17.0",
+        "soundfile==0.14.0",
+        "soxr==1.1.0",
+        "sympy==1.14.0",
+        "threadpoolctl==3.6.0",
+        "torch-einops-utils==0.1.20",
+        "torch==2.13.0+cpu",
+        "torchaudio==2.11.0",
+        "torchfcpe==0.0.4",
+        "torchvision==0.28.0",
+        "tqdm==4.70.0",
+        "typing-extensions==4.16.0",
+        "urllib3==2.7.0"
+      ]
+    },
+    {
+      "candidate": "xpu-311",
+      "note": "Python 3.11 + torch XPU (Intel)",
+      "status": "pass",
+      "reason": "",
+      "install_seconds": 39.1,
+      "resolved": {
+        "audio-separator": "0.44.5",
+        "librosa": "0.11.0",
+        "numpy": "2.4.6",
+        "onnxruntime": "1.28.0",
+        "pyloudnorm": "0.2.0",
+        "python-stretch": "0.3.1",
+        "scipy": "1.17.1",
+        "soundfile": "0.14.0",
+        "soxr": "1.1.0",
+        "torch": "2.13.0+xpu",
+        "torchfcpe": "0.0.4"
+      },
+      "smoke": {
+        "all_required_ok": true,
+        "probes": {
+          "python": {
+            "ok": true,
+            "seconds": 0.0,
+            "version": "3.11.15",
+            "executable": "C:\\dev\\song-voice-converter\\spike\\.venvs\\xpu-311\\Scripts\\python.exe"
+          },
+          "torch": {
+            "ok": true,
+            "seconds": 35.98,
+            "version": "2.13.0+xpu",
+            "built_cuda": null,
+            "built_xpu": "20260000",
+            "cuda_available": false,
+            "xpu_available": true,
+            "accelerators": [
+              "xpu"
+            ],
+            "matmul_device": "cpu",
+            "matmul_ok": true,
+            "matmul_ms": 72.1
+          },
+          "xpu": {
+            "ok": true,
+            "seconds": 0.78,
+            "device_count": 1,
+            "device_name": "Intel(R) Arc(TM) Graphics",
+            "total_memory_gb": 7.8,
+            "driver_version": "1.15.39183+1",
+            "max_compute_units": 128,
+            "gpu_eu_count": 128,
+            "type": "gpu",
+            "matmul_ms": 578.5,
+            "max_abs_error": 0.0,
+            "numerics_ok": true
+          },
+          "component_backends": {
+            "ok": true,
+            "seconds": 26.92,
+            "devices": [
+              "cpu",
+              "xpu"
+            ],
+            "matrix": {
+              "separation": {
+                "cpu": {
+                  "ok": true,
+                  "seconds": 0.1,
+                  "ops": "stft+mha+istft",
+                  "output_frames": 88200,
+                  "length_preserved": true,
+                  "finite": true
+                },
+                "xpu": {
+                  "ok": true,
+                  "seconds": 6.23,
+                  "ops": "stft+mha+istft",
+                  "output_frames": 88200,
+                  "length_preserved": true,
+                  "finite": true
+                }
+              },
+              "f0": {
+                "cpu": {
+                  "ok": true,
+                  "seconds": 12.41,
+                  "ops": "torchfcpe end-to-end",
+                  "end_to_end": true,
+                  "median_hz": 220.1,
+                  "plausible": true,
+                  "finite": true
+                },
+                "xpu": {
+                  "ok": true,
+                  "seconds": 5.7,
+                  "ops": "torchfcpe end-to-end",
+                  "end_to_end": true,
+                  "median_hz": 220.1,
+                  "plausible": true,
+                  "finite": true
+                }
+              },
+              "conversion": {
+                "cpu": {
+                  "ok": true,
+                  "seconds": 0.19,
+                  "ops": "conv1d+transformer+convtranspose",
+                  "output_shape": [
+                    1,
+                    1,
+                    3200
+                  ],
+                  "finite": true
+                },
+                "xpu": {
+                  "ok": true,
+                  "seconds": 2.28,
+                  "ops": "conv1d+transformer+convtranspose",
+                  "output_shape": [
+                    1,
+                    1,
+                    3200
+                  ],
+                  "finite": true
+                }
+              },
+              "pitch_shift": {
+                "cpu": {
+                  "ok": true,
+                  "ops": "python-stretch (cpu-only by design)"
+                }
+              }
+            }
+          },
+          "numpy": {
+            "ok": true,
+            "seconds": 0.0,
+            "version": "2.4.6"
+          },
+          "soundfile": {
+            "ok": true,
+            "seconds": 0.1,
+            "version": "0.14.0",
+            "roundtrip_ok": true
+          },
+          "librosa": {
+            "ok": true,
+            "seconds": 42.57,
+            "version": "0.11.0",
+            "yin_median_hz": 440.4
+          },
+          "pyloudnorm": {
+            "ok": true,
+            "seconds": 0.05,
+            "version": "?",
+            "lufs": -9.07
+          },
+          "pitch_shift": {
+            "ok": true,
+            "seconds": 0.05,
+            "module": "python_stretch",
+            "input_frames": 44100,
+            "output_frames": 44100,
+            "length_preserved": true,
+            "finite": true
+          },
+          "audio_separator": {
+            "ok": true,
+            "seconds": 0.87,
+            "importable": true,
+            "has_load_model": true,
+            "has_separate": true
+          },
+          "torchfcpe": {
+            "ok": true,
+            "seconds": 0.0,
+            "importable": true,
+            "version": "?"
+          },
+          "onnxruntime": {
+            "ok": true,
+            "seconds": 0.0,
+            "version": "1.28.0",
+            "providers": [
+              "AzureExecutionProvider",
+              "CPUExecutionProvider"
+            ]
+          },
+          "ffmpeg": {
+            "ok": true,
+            "seconds": 0.16,
+            "path": "C:\\Users\\cdtauman\\AppData\\Local\\Microsoft\\WinGet\\Links\\ffmpeg.EXE",
+            "version": "ffmpeg version 8.1.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+            "filters": {
+              "loudnorm": true,
+              "alimiter": true,
+              "acompressor": true,
+              "aresample": true
+            },
+            "all_filters_present": true
+          }
+        }
+      },
+      "freeze": [
+        "absl-py==2.5.0",
+        "audio-separator==0.44.5",
+        "audioread==3.1.0",
+        "beartype==0.18.5",
+        "certifi==2026.7.22",
+        "cffi==2.1.1",
+        "charset-normalizer==3.5.1",
+        "colorama==0.4.6",
+        "cython==3.2.9",
+        "decorator==5.3.1",
+        "diffq-fixed==0.2.4",
+        "dpcpp-cpp-rt==2026.0.0",
+        "einops==0.8.2",
+        "filelock==3.32.3",
+        "flatbuffers==25.12.19",
+        "fsspec==2026.7.0",
+        "hyper-connections==0.4.11",
+        "idna==3.18",
+        "intel-cmplr-lib-rt==2026.0.0",
+        "intel-cmplr-lib-ur==2026.0.0",
+        "intel-cmplr-lic-rt==2026.0.0",
+        "intel-opencl-rt==2026.0.0",
+        "intel-openmp==2026.0.0",
+        "intel-pti==0.17.0",
+        "intel-sycl-rt==2026.0.0",
+        "jinja2==3.1.6",
+        "joblib==1.5.3",
+        "julius==0.2.8",
+        "lazy-loader==0.5",
+        "librosa==0.11.0",
+        "llvmlite==0.49.0",
+        "local-attention==1.11.2",
+        "markupsafe==3.0.3",
+        "mkl==2026.0.0",
+        "ml-collections==1.1.0",
+        "ml-dtypes==0.6.0",
+        "mpmath==1.3.0",
+        "msgpack==1.2.1",
+        "narwhals==2.24.0",
+        "networkx==3.6.1",
+        "numba==0.67.0",
+        "numpy==2.4.6",
+        "onemkl-license==2026.0.0",
+        "onemkl-sycl-blas==2026.0.0",
+        "onemkl-sycl-dft==2026.0.0",
+        "onemkl-sycl-lapack==2026.0.0",
+        "onemkl-sycl-rng==2026.0.0",
+        "onemkl-sycl-sparse==2026.0.0",
+        "onnx-weekly==1.23.0.dev20260805",
+        "onnx2torch-py313==1.6.0",
+        "onnxruntime==1.28.0",
+        "packaging==26.3",
+        "pillow==12.3.0",
+        "platformdirs==4.11.3",
+        "pooch==1.9.0",
+        "protobuf==7.35.1",
+        "pycparser==3.0",
+        "pydub==0.25.1",
+        "pyelftools==0.32",
+        "pyloudnorm==0.2.0",
+        "python-stretch==0.3.1",
+        "pyyaml==6.0.3",
+        "requests==2.34.2",
+        "resampy==0.4.3",
+        "rotary-embedding-torch==0.6.5",
+        "samplerate==0.1.0",
+        "scikit-learn==1.9.0",
+        "scipy==1.17.1",
+        "setuptools==78.1.0",
+        "six==1.17.0",
+        "soundfile==0.14.0",
+        "soxr==1.1.0",
+        "sympy==1.14.0",
+        "tbb==2023.0.0",
+        "tcmlib==1.5.0",
+        "threadpoolctl==3.6.0",
+        "torch-einops-utils==0.1.20",
+        "torch==2.13.0+xpu",
+        "torchaudio==2.11.0",
+        "torchfcpe==0.0.4",
+        "torchvision==0.28.0",
+        "tqdm==4.70.0",
+        "triton-xpu==3.7.2",
+        "typing-extensions==4.16.0",
+        "umf==1.1.0",
+        "urllib3==2.7.0"
+      ]
+    }
+  ]
+}

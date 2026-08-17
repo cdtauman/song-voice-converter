@@ -9,10 +9,11 @@ from svc_engine.diag.checks import CheckResult, Status
 
 __all__ = ["render_text", "render_json", "overall_status"]
 
-_ICON = {Status.OK: "✅", Status.WARN: "⚠️ ", Status.FAIL: "❌"}
+_ICON = {Status.OK: "✅", Status.INFO: "ℹ️ ", Status.WARN: "⚠️ ", Status.FAIL: "❌"}
 
 
 def overall_status(results: list[CheckResult]) -> Status:
+    """INFO is neutral by design -- "no NVIDIA here" must not read as a problem."""
     if any(r.status is Status.FAIL for r in results):
         return Status.FAIL
     if any(r.status is Status.WARN for r in results):

@@ -17,6 +17,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from svc_engine.compute import (
+    Component,
+    ComputeBackend,
+    DeviceManager,
+    detect_display_adapters,
+    load_matrix,
+    looks_like_intel_gpu,
+)
+
 __all__ = ["Status", "CheckResult", "run_all_checks", "REQUIRED_FFMPEG_FILTERS"]
 
 #: ffmpeg filters the mixing stage depends on (decision: ffmpeg instead of custom DSP).
@@ -40,6 +49,8 @@ _MIN_RAM_GB = 12.0
 
 class Status(StrEnum):
     OK = "ok"
+    #: Neutral fact worth showing. Never affects the overall verdict.
+    INFO = "info"
     WARN = "warn"
     FAIL = "fail"
 
@@ -181,8 +192,36 @@ def check_disk(target: Path) -> CheckResult:
     )
 
 
-def check_gpu() -> CheckResult:
-    label = "כרטיס מסך"
+def check_graphics_hardware() -> list[CheckResult]:
+    """What is physically installed -- reported before any torch question."""
+    adapters = detect_display_adapters()
+    results: list[CheckResult] = []
+
+    intel = [a for a in adapters if "intel" in a.lower()]
+    nvidia = [a for a in adapters if "nvidia" in a.lower()]
+
+    if intel:
+        results.append(CheckResult(
+            "hw.intel", "כרטיס גרפי Intel", Status.OK, intel[0],
+            detail="; ".join(intel),
+        ))
+    if nvidia:
+        results.append(CheckResult(
+            "hw.nvidia", "כרטיס גרפי NVIDIA", Status.OK, nvidia[0],
+            detail="; ".join(nvidia),
+        ))
+    if not intel and not nvidia:
+        results.append(CheckResult(
+            "hw.gpu", "כרטיס גרפי", Status.WARN,
+            "לא זיהינו כרטיס גרפי נתמך. נעבוד על המעבד.",
+            detail="; ".join(adapters),
+        ))
+    return results
+
+
+def check_cuda() -> CheckResult:
+    """NVIDIA path. Absence is information, not a failure -- Intel is equally valid."""
+    label = "האצה של NVIDIA (CUDA)"
 
     if importlib.util.find_spec("torch") is not None:
         try:
@@ -191,54 +230,128 @@ def check_gpu() -> CheckResult:
             if torch.cuda.is_available():
                 name = torch.cuda.get_device_name(0)
                 total = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
-                free = torch.cuda.mem_get_info(0)[0] / (1024 ** 3)
                 return CheckResult(
-                    "gpu", label, Status.OK,
-                    f"{name} ({total:.0f}GB, {free:.1f}GB פנויים)",
-                    detail=f"torch {torch.__version__} cuda {torch.version.cuda}",
+                    "cuda", label, Status.OK,
+                    f"פעילה — {name} ({total:.0f}GB)",
+                    detail=f"torch {torch.__version__}, CUDA {torch.version.cuda}",
+                )
+            if torch.version.cuda and _has_nvidia_driver():
+                return CheckResult(
+                    "cuda", label, Status.WARN,
+                    f"מנוע ה-AI נבנה ל-CUDA {torch.version.cuda} אבל לא מצליח לגשת לכרטיס.",
                 )
         except Exception as exc:  # noqa: BLE001  a broken torch must not kill doctor
-            return CheckResult(
-                "gpu", label, Status.WARN,
-                "לא הצלחנו לתשאל את כרטיס המסך.", detail=str(exc),
-            )
+            return CheckResult("cuda", label, Status.WARN, "לא הצלחנו לבדוק.", str(exc))
 
     if _has_nvidia_driver():
         return CheckResult(
-            "gpu", label, Status.WARN,
-            "נמצא כרטיס NVIDIA, אבל רכיבי ה-AI עדיין לא הותקנו.",
+            "cuda", label, Status.WARN,
+            "נמצא דרייבר NVIDIA, אבל מנוע ה-AI לא מותקן בגרסת CUDA.",
+        )
+    return CheckResult("cuda", label, Status.INFO, "לא קיימת במחשב הזה.")
+
+
+def check_xpu() -> CheckResult:
+    """Intel path. A first-class target, not a fallback."""
+    label = "האצה של Intel (XPU)"
+
+    if importlib.util.find_spec("torch") is not None:
+        try:
+            import torch  # noqa: PLC0415
+
+            xpu = getattr(torch, "xpu", None)
+            if xpu is not None and xpu.is_available():
+                name = xpu.get_device_name(0)
+                extra = ""
+                try:
+                    total = xpu.get_device_properties(0).total_memory / (1024 ** 3)
+                    extra = f" ({total:.0f}GB)"
+                except Exception:  # noqa: BLE001  properties are best-effort
+                    pass
+                return CheckResult(
+                    "xpu", label, Status.OK, f"פעילה — {name}{extra}",
+                    detail=f"torch {torch.__version__}",
+                )
+            if xpu is None:
+                return CheckResult(
+                    "xpu", label, Status.WARN,
+                    "גרסת מנוע ה-AI המותקנת לא כוללת תמיכה בכרטיסי Intel.",
+                )
+            if looks_like_intel_gpu():
+                return CheckResult(
+                    "xpu", label, Status.WARN,
+                    "יש כרטיס Intel, אבל מנוע ה-AI לא מצליח לגשת אליו. "
+                    "בדרך כלל חסר דרייבר גרפי מעודכן.",
+                )
+        except Exception as exc:  # noqa: BLE001
+            return CheckResult("xpu", label, Status.WARN, "לא הצלחנו לבדוק.", str(exc))
+
+    if looks_like_intel_gpu():
+        return CheckResult(
+            "xpu", label, Status.WARN,
+            "נמצא כרטיס Intel, אבל מנוע ה-AI לא מותקן בגרסה שתומכת בו.",
+        )
+    return CheckResult("xpu", label, Status.INFO, "לא קיימת במחשב הזה.")
+
+
+def check_acceleration_summary() -> CheckResult:
+    """The bottom line: what will actually run the heavy work."""
+    label = "האצת חומרה"
+    manager = DeviceManager()
+    backends = manager.available_backends()
+    accelerated = [b for b in backends if b is not ComputeBackend.CPU]
+
+    if not accelerated:
+        if importlib.util.find_spec("torch") is None:
+            return CheckResult(
+                "accel", label, Status.WARN,
+                "מנוע ה-AI עדיין לא מותקן, אז אי אפשר לקבוע. בינתיים: מעבד בלבד.",
+            )
+        return CheckResult(
+            "accel", label, Status.WARN,
+            "אין האצה זמינה — העיבוד ירוץ על המעבד ויהיה איטי משמעותית.",
         )
 
+    device = manager.preferred()
+    matrix = load_matrix()
+    per_component = []
+    for component in Component:
+        chosen = matrix.device_for(component, manager)
+        per_component.append(f"{component.value}={chosen.backend.value}")
+
     return CheckResult(
-        "gpu", label, Status.FAIL,
-        "לא נמצא כרטיס מסך של NVIDIA. אפשר לעבוד על המעבד, אבל זה יהיה איטי מאוד.",
+        "accel", label, Status.OK,
+        f"פעילה דרך {device.label_he} — {device.name}",
+        detail="; ".join(per_component),
     )
 
 
-def check_torch_cuda_match() -> CheckResult:
-    label = "התאמת AI לכרטיס המסך"
-    if importlib.util.find_spec("torch") is None:
-        return CheckResult("torch", label, Status.FAIL, "מנוע ה-AI עדיין לא הותקן.")
-    try:
-        import torch  # noqa: PLC0415
+def check_component_backends() -> CheckResult:
+    """Which backend each pipeline stage will use, based on recorded proof."""
+    label = "מסלול לכל שלב"
+    manager = DeviceManager()
+    matrix = load_matrix()
 
-        built = torch.version.cuda
-        if built is None:
-            return CheckResult(
-                "torch", label, Status.WARN,
-                f"מנוע ה-AI מותקן בגרסת מעבד בלבד (torch {torch.__version__}).",
-            )
-        if torch.cuda.is_available():
-            return CheckResult(
-                "torch", label, Status.OK,
-                f"תואמים (torch {torch.__version__}, CUDA {built})",
-            )
-        return CheckResult(
-            "torch", label, Status.WARN,
-            f"מנוע ה-AI נבנה ל-CUDA {built} אבל לא מצליח לגשת לכרטיס המסך.",
-        )
-    except Exception as exc:  # noqa: BLE001
-        return CheckResult("torch", label, Status.FAIL, "מנוע ה-AI לא נטען.", str(exc))
+    names_he = {
+        Component.SEPARATION: "הפרדה",
+        Component.F0: "זיהוי גובה",
+        Component.CONVERSION: "המרת קול",
+        Component.PITCH_SHIFT: "הזזת גובה",
+    }
+    parts = []
+    for component in Component:
+        device = matrix.device_for(component, manager)
+        parts.append(f"{names_he[component]}: {device.label_he}")
+
+    on_cpu = sum(
+        1 for c in Component
+        if matrix.device_for(c, manager).backend is ComputeBackend.CPU
+    )
+    status = Status.OK if on_cpu < len(Component) else Status.INFO
+    return CheckResult(
+        "components", label, status, " · ".join(parts),
+        detail=f"matrix source: {matrix.source}",
+    )
 
 
 def check_ffmpeg() -> CheckResult:
@@ -311,10 +424,15 @@ def run_all_checks(work_dir: Path) -> list[CheckResult]:
         check_python(),
         check_ram(),
         check_disk(work_dir),
-        check_gpu(),
-        check_torch_cuda_match(),
+    ]
+    results.extend(check_graphics_hardware())
+    results.extend([
+        check_cuda(),
+        check_xpu(),
+        check_acceleration_summary(),
+        check_component_backends(),
         check_ffmpeg(),
         check_backend_interfaces(),
-    ]
+    ])
     results.extend(check_pipeline_packages())
     return results

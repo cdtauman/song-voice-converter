@@ -140,6 +140,68 @@ class ConversionBackend(Protocol):
 
 ---
 
+## 3ג. 🆕 שכבת החומרה — שלושה מסלולי ביצוע
+
+SongVoice תומכת בשלושה מסלולים **כיעדי ליבה**, לא כגיבויים זה לזה:
+
+| מסלול | חומרה | הערה |
+|--------|--------|------|
+| `cuda` | כרטיסי NVIDIA | יעד תאימות נדרש |
+| `xpu` | Intel Arc, ו-Core Ultra עם Arc משולב | **יעד ליבה**, דרך PyTorch XPU הרשמי |
+| `cpu` | כל מחשב | גיבוי אוניברסלי |
+
+**סדר העדפה:** `cuda` ← `xpu` ← `cpu`.
+
+### הרכיבים
+
+```python
+class ComputeBackend(StrEnum):
+    CUDA = "cuda"
+    XPU  = "xpu"
+    CPU  = "cpu"
+
+class DeviceManager:
+    def detect(self)             -> list[DeviceInfo]   # מה קיים בפועל
+    def available_backends(self) -> list[ComputeBackend]
+    def preferred(self)          -> DeviceInfo          # הכי מהיר שקיים
+    def select(self, allowed)    -> DeviceInfo          # הכי מהיר מתוך מה שמותר
+```
+
+### ⭐ כלל ההוכחה
+
+> **רכיב נחשב נתמך על מאיץ רק אחרי שעומס אמיתי רץ עליו והחזיר תוצאה נכונה.**
+> התקנה נקייה, ייבוא מוצלח, או `is_available() == True` — **לא מוכיחים כלום.**
+> מה שלא הוכח, רץ על CPU.
+
+הסיבה: "נתמך" שגוי לא מתגלה עכשיו — הוא מתגלה כתקלה מסתורית באמצע עיבוד שיר.
+
+זה מיוצג ב-`SupportMatrix`, עם שלוש רמות הוכחה:
+
+| רמה | מה זה אומר | מספיק לייצור? |
+|------|-------------|----------------|
+| `none` | מעולם לא רץ על המאיץ הזה | ❌ |
+| `ops` | סט האופרטורים שהרכיב צריך רץ בהצלחה | ✅ |
+| `end_to_end` | המודל האמיתי רץ מקצה לקצה | ✅ |
+
+המטריצה נכתבת אוטומטית ע"י ה-Compatibility Spike אל
+`src/svc_engine/data/compute-support.json`, על סמך מה שבאמת רץ על המכונה.
+
+### בחירה לכל שלב בנפרד
+
+```python
+device = matrix.device_for(Component.SEPARATION, manager)
+hint   = DeviceHint.from_device(device)
+```
+
+**אין הנחה שמסלול אחד חייב לעבוד לכל הרכיבים.** אם ההפרדה לא רצה על Intel אבל
+זיהוי הגובה כן — ההפרדה תרוץ על CPU והשאר על Intel, באותה עבודה.
+`JobRunner` בוחר את המסלול המהיר שאומת, שלב אחר שלב.
+
+`pitch_shift` הוא מקרה מיוחד: `python-stretch` היא ספריית DSP ב-C++ בלי מסלול GPU
+כלל. CPU שם הוא המקום הנכון לעבודה, לא נסיגה מכישלון.
+
+---
+
 ## 3ב. 🆕 סביבות ריצה — ותוכנית ב'
 
 הסיכון: Roformer, RMVPE, RVC ו-`python-stretch` נכתבו ע"י אנשים שונים בשנים שונות.

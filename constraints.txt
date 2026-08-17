@@ -1,7 +1,7 @@
 # SongVoice -- locked dependency matrix
 # Produced by spike/run_spike.py. Do not hand-edit.
-# candidate : cpu-311  (Python 3.11 + torch CPU)
-# generated : 2026-08-16T19:35:23+00:00
+# candidate : xpu-311  (Python 3.11 + torch XPU (Intel))
+# generated : 2026-08-17T00:06:44+00:00
 # machine   : Windows-10-10.0.26200-SP0
 
 absl-py==2.5.0
@@ -15,12 +15,20 @@ colorama==0.4.6
 cython==3.2.9
 decorator==5.3.1
 diffq-fixed==0.2.4
+dpcpp-cpp-rt==2026.0.0
 einops==0.8.2
 filelock==3.32.3
 flatbuffers==25.12.19
 fsspec==2026.7.0
 hyper-connections==0.4.11
 idna==3.18
+intel-cmplr-lib-rt==2026.0.0
+intel-cmplr-lib-ur==2026.0.0
+intel-cmplr-lic-rt==2026.0.0
+intel-opencl-rt==2026.0.0
+intel-openmp==2026.0.0
+intel-pti==0.17.0
+intel-sycl-rt==2026.0.0
 jinja2==3.1.6
 joblib==1.5.3
 julius==0.2.8
@@ -29,6 +37,7 @@ librosa==0.11.0
 llvmlite==0.49.0
 local-attention==1.11.2
 markupsafe==3.0.3
+mkl==2026.0.0
 ml-collections==1.1.0
 ml-dtypes==0.6.0
 mpmath==1.3.0
@@ -37,6 +46,12 @@ narwhals==2.24.0
 networkx==3.6.1
 numba==0.67.0
 numpy==2.4.6
+onemkl-license==2026.0.0
+onemkl-sycl-blas==2026.0.0
+onemkl-sycl-dft==2026.0.0
+onemkl-sycl-lapack==2026.0.0
+onemkl-sycl-rng==2026.0.0
+onemkl-sycl-sparse==2026.0.0
 onnx-weekly==1.23.0.dev20260805
 onnx2torch-py313==1.6.0
 onnxruntime==1.28.0
@@ -47,6 +62,7 @@ pooch==1.9.0
 protobuf==7.35.1
 pycparser==3.0
 pydub==0.25.1
+pyelftools==0.32
 pyloudnorm==0.2.0
 python-stretch==0.3.1
 pyyaml==6.0.3
@@ -61,12 +77,16 @@ six==1.17.0
 soundfile==0.14.0
 soxr==1.1.0
 sympy==1.14.0
+tbb==2023.0.0
+tcmlib==1.5.0
 threadpoolctl==3.6.0
 torch-einops-utils==0.1.20
-torch==2.13.0+cpu
+torch==2.13.0+xpu
 torchaudio==2.11.0
 torchfcpe==0.0.4
 torchvision==0.28.0
 tqdm==4.70.0
+triton-xpu==3.7.2
 typing-extensions==4.16.0
+umf==1.1.0
 urllib3==2.7.0

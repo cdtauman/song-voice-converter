@@ -10,11 +10,15 @@ from pathlib import Path
 
 import numpy as np
 
+from svc_engine.compute.devices import ComputeBackend, DeviceInfo
+
 __all__ = [
     "AudioBuffer",
-    "F0Curve",
     "BackendInfo",
+    "ComputeBackend",
     "DeviceHint",
+    "DeviceInfo",
+    "F0Curve",
 ]
 
 
@@ -55,11 +59,25 @@ class F0Curve:
 
 @dataclass(frozen=True)
 class DeviceHint:
-    """What the caller would like the backend to run on."""
+    """Which compute device the caller wants this backend to use.
 
-    prefer_gpu: bool = True
+    Produced by `SupportMatrix.device_for(component, manager)`, so it already
+    reflects what that component has actually been proven to run on.
+    """
+
+    backend: ComputeBackend = ComputeBackend.CPU
     device_index: int = 0
     max_vram_mb: int | None = None
+
+    @property
+    def torch_device(self) -> str:
+        if self.backend is ComputeBackend.CPU:
+            return "cpu"
+        return f"{self.backend.value}:{self.device_index}"
+
+    @classmethod
+    def from_device(cls, device: DeviceInfo, max_vram_mb: int | None = None) -> DeviceHint:
+        return cls(backend=device.backend, device_index=device.index, max_vram_mb=max_vram_mb)
 
 
 @dataclass(frozen=True)
