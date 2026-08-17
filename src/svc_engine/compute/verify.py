@@ -145,7 +145,13 @@ def workload_f0(device: str) -> dict[str, Any]:
 
     try:
         import torchfcpe
-
+    except ImportError as exc:
+        # If the optional FCPE package is absent, we can still gather operator-level
+        # compatibility evidence. Once the real package is present, however, any
+        # model load/inference/numerical failure must fail loudly rather than being
+        # hidden behind the fallback workload.
+        fallback_reason = f"{type(exc).__name__}: {exc}"[:200]
+    else:
         model = torchfcpe.spawn_bundled_infer_model(device=device)
         with torch.no_grad():
             f0 = model.infer(tone.unsqueeze(-1).to(device), sr=sr, decoder_mode="local_argmax")
@@ -164,8 +170,6 @@ def workload_f0(device: str) -> dict[str, Any]:
             "production_eligible": False,
             "median_hz": round(median, 1),
         }
-    except Exception as exc:  # noqa: BLE001  weights may be unavailable offline
-        fallback_reason = f"{type(exc).__name__}: {exc}"[:200]
 
     conv = torch.nn.Sequential(
         torch.nn.Conv1d(1, 128, 9, padding=4),
