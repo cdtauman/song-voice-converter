@@ -1,20 +1,24 @@
-"""Audit the model catalogue: licences, and whether the downloads still exist.
+"""Audit the model catalogue: licences, integrity pins, and live downloads.
 
-Two separate jobs, deliberately in one place because they are the two ways a
-catalogue entry goes bad.
+Three separate checks live here because they are the three ways a catalogue
+entry goes bad.
 
 **Licences** (offline, runs in CI). Every entry must record what its licence is,
 when that was checked, and against which source. An entry with no permissive
 licence is not an error -- it is usable privately -- but it must be *declared*,
 so that packaging in Phase 11 can exclude it instead of discovering it.
 
+**Integrity pins** (offline, runs in CI). Every file that belongs to a model we
+may redistribute must have a well-formed SHA-256. A mutable upstream URL is not
+an integrity boundary. Private-only experimental entries may remain unpinned,
+but the distributable/default path may not.
+
 **Reachability** (network, run by hand). This is not hypothetical. When this
 phase was written, five of the seven checkpoints the plan named had already
 disappeared from the UVR release repository that most tools fetch them from.
-Every URL here is a mirror found after that, and the same thing will happen to
-some of them. Running this is how we find out before a user does.
+Running this is how we find out before a user does.
 
-    python tools/check_model_catalogue.py                 # licences only
+    python tools/check_model_catalogue.py                 # offline CI checks
     python tools/check_model_catalogue.py --check-urls    # + reachability
 """
 
@@ -30,14 +34,31 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from svc_engine.resources import load_registry  # noqa: E402
 
 
+def _valid_sha256(value: str | None) -> bool:
+    if value is None or len(value) != 64:
+        return False
+    return all(ch in "0123456789abcdef" for ch in value)
+
+
 def check_licences(strict: bool) -> tuple[int, list[dict]]:
     registry = load_registry()
     rows: list[dict] = []
     undeclared = 0
+    invalid_hashes: list[str] = []
+    unpinned_shippable: list[str] = []
 
     for spec in sorted(registry.models.values(), key=lambda m: (m.kind.value, m.id)):
         if not spec.license.verified_at or not spec.license.source:
             undeclared += 1
+
+        for file_spec in spec.files:
+            digest = file_spec.sha256
+            file_id = f"{spec.id}/{file_spec.name}"
+            if digest is not None and not _valid_sha256(digest):
+                invalid_hashes.append(file_id)
+            if spec.license.is_redistributable and digest is None:
+                unpinned_shippable.append(file_id)
+
         rows.append(
             {
                 "id": spec.id,
@@ -72,6 +93,18 @@ def check_licences(strict: bool) -> tuple[int, list[dict]]:
 
     if undeclared:
         print(f"\nFAIL: {undeclared} entries have no licence audit trail.")
+        return 1, rows
+
+    if invalid_hashes:
+        print("\nFAIL: malformed SHA-256 value(s):")
+        for name in invalid_hashes:
+            print(f"  {name}")
+        return 1, rows
+
+    if unpinned_shippable:
+        print("\nFAIL: redistributable model files must be SHA-256 pinned:")
+        for name in unpinned_shippable:
+            print(f"  {name}")
         return 1, rows
 
     if strict and private:
