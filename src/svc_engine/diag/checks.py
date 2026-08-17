@@ -295,7 +295,7 @@ def check_xpu() -> CheckResult:
 
 
 def check_acceleration_summary() -> CheckResult:
-    """The bottom line: what will actually run the heavy work."""
+    """Separate accelerator availability from production-approved model routing."""
     label = "האצת חומרה"
     manager = DeviceManager()
     backends = manager.available_backends()
@@ -315,20 +315,32 @@ def check_acceleration_summary() -> CheckResult:
     device = manager.preferred()
     matrix = load_matrix()
     per_component = []
+    production_accelerated = []
     for component in Component:
         chosen = matrix.device_for(component, manager)
         per_component.append(f"{component.value}={chosen.backend.value}")
+        if chosen.backend is not ComputeBackend.CPU:
+            production_accelerated.append(component)
+
+    if not production_accelerated:
+        return CheckResult(
+            "accel", label, Status.INFO,
+            f"{device.label_he} זמין — {device.name}; "
+            "תאימות המאיץ נבדקה, אבל מודלי הייצור המלאים טרם אומתו עליו. "
+            "כרגע מסלולי הייצור נשארים על המעבד.",
+            detail="; ".join(per_component),
+        )
 
     return CheckResult(
         "accel", label, Status.OK,
-        f"פעילה דרך {device.label_he} — {device.name}",
+        f"מסלול ייצור מואץ פעיל דרך {device.label_he} — {device.name}",
         detail="; ".join(per_component),
     )
 
 
 def check_component_backends() -> CheckResult:
-    """Which backend each pipeline stage will use, based on recorded proof."""
-    label = "מסלול לכל שלב"
+    """Which production backend each pipeline stage will use, based on real proof."""
+    label = "מסלול ייצור לכל שלב"
     manager = DeviceManager()
     matrix = load_matrix()
 
@@ -339,18 +351,25 @@ def check_component_backends() -> CheckResult:
         Component.PITCH_SHIFT: "הזזת גובה",
     }
     parts = []
+    evidence = []
     for component in Component:
+        support = matrix.get(component)
         device = matrix.device_for(component, manager)
         parts.append(f"{names_he[component]}: {device.label_he}")
+        if support.note_he:
+            evidence.append(support.note_he)
 
     on_cpu = sum(
         1 for c in Component
         if matrix.device_for(c, manager).backend is ComputeBackend.CPU
     )
     status = Status.OK if on_cpu < len(Component) else Status.INFO
+    detail = f"matrix source: {matrix.source}"
+    if evidence:
+        detail += " | " + " | ".join(evidence)
     return CheckResult(
         "components", label, status, " · ".join(parts),
-        detail=f"matrix source: {matrix.source}",
+        detail=detail,
     )
 
 

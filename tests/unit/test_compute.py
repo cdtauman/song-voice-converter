@@ -97,9 +97,10 @@ def test_unproven_backend_is_not_allowed() -> None:
     assert s.allows(ComputeBackend.CPU)
 
 
-def test_ops_proof_is_enough() -> None:
+def test_ops_proof_is_not_enough_for_production() -> None:
+    """Operator compatibility is evidence, not permission to route real models."""
     s = ComponentSupport(Component.F0, {ComputeBackend.XPU: ProofLevel.OPS})
-    assert s.allows(ComputeBackend.XPU)
+    assert not s.allows(ComputeBackend.XPU)
 
 
 def test_end_to_end_proof_is_enough() -> None:
@@ -115,10 +116,14 @@ def test_explicit_none_is_rejected() -> None:
 # --- per-component selection ----------------------------------------------- #
 
 def test_components_may_use_different_backends() -> None:
-    """A step that failed on the accelerator must not drag the others to CPU."""
+    """Only the component with real end-to-end proof may use the accelerator."""
     matrix = SupportMatrix(components={
-        Component.SEPARATION: ComponentSupport(Component.SEPARATION),  # unproven
-        Component.F0: ComponentSupport(Component.F0, {ComputeBackend.XPU: ProofLevel.OPS}),
+        Component.SEPARATION: ComponentSupport(
+            Component.SEPARATION, {ComputeBackend.XPU: ProofLevel.OPS}
+        ),
+        Component.F0: ComponentSupport(
+            Component.F0, {ComputeBackend.XPU: ProofLevel.END_TO_END}
+        ),
         Component.CONVERSION: ComponentSupport(
             Component.CONVERSION, {ComputeBackend.XPU: ProofLevel.OPS}
         ),
@@ -128,13 +133,15 @@ def test_components_may_use_different_backends() -> None:
 
     assert matrix.device_for(Component.SEPARATION, m).backend is ComputeBackend.CPU
     assert matrix.device_for(Component.F0, m).backend is ComputeBackend.XPU
-    assert matrix.device_for(Component.CONVERSION, m).backend is ComputeBackend.XPU
+    assert matrix.device_for(Component.CONVERSION, m).backend is ComputeBackend.CPU
     assert matrix.device_for(Component.PITCH_SHIFT, m).backend is ComputeBackend.CPU
 
 
 def test_proven_backend_is_ignored_when_hardware_absent() -> None:
     matrix = SupportMatrix(components={
-        Component.F0: ComponentSupport(Component.F0, {ComputeBackend.CUDA: ProofLevel.OPS}),
+        Component.F0: ComponentSupport(
+            Component.F0, {ComputeBackend.CUDA: ProofLevel.END_TO_END}
+        ),
     })
     m = _FakeManager([ComputeBackend.CPU, ComputeBackend.XPU])
     assert matrix.device_for(Component.F0, m).backend is ComputeBackend.CPU
@@ -165,14 +172,20 @@ def test_load_matrix_reads_recorded_proof(tmp_path: Path) -> None:
     f.write_text(json.dumps({
         "source": "spike test",
         "components": {
-            "f0": {"proofs": {"xpu": "end_to_end"}, "note_he": "אומת"},
-            "separation": {"proofs": {}, "note_he": ""},
+            "f0": {
+                "proofs": {"xpu": "end_to_end"},
+                "implementation_proofs": {"rmvpe": {"xpu": "end_to_end"}},
+                "note_he": "אומת",
+            },
+            "separation": {"proofs": {"xpu": "ops"}, "note_he": ""},
         },
     }), encoding="utf-8")
 
     matrix = load_matrix(f)
     assert matrix.source == "spike test"
     assert matrix.get(Component.F0).allows(ComputeBackend.XPU)
+    assert matrix.get(Component.F0).implementation_proofs["rmvpe"][ComputeBackend.XPU] \
+        is ProofLevel.END_TO_END
     assert not matrix.get(Component.SEPARATION).allows(ComputeBackend.XPU)
     # components missing from the file keep conservative defaults
     assert not matrix.get(Component.CONVERSION).allows(ComputeBackend.XPU)
@@ -190,12 +203,20 @@ def test_load_matrix_ignores_unknown_names(tmp_path: Path) -> None:
     assert not matrix.get(Component.F0).allows(ComputeBackend.XPU)
 
 
-def test_roundtrip_to_dict() -> None:
+def test_roundtrip_to_dict_preserves_implementation_evidence() -> None:
     matrix = SupportMatrix(components={
-        Component.F0: ComponentSupport(Component.F0, {ComputeBackend.XPU: ProofLevel.OPS}),
+        Component.F0: ComponentSupport(
+            Component.F0,
+            {ComputeBackend.XPU: ProofLevel.OPS},
+            implementation_proofs={
+                "torchfcpe": {ComputeBackend.XPU: ProofLevel.END_TO_END}
+            },
+        ),
     })
     payload = matrix.to_dict()
     assert payload["components"]["f0"]["proofs"]["xpu"] == "ops"
+    assert payload["components"]["f0"]["implementation_proofs"]["torchfcpe"]["xpu"] \
+        == "end_to_end"
 
 
 # --- hardware detection ---------------------------------------------------- #

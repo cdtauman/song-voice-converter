@@ -1,15 +1,17 @@
 """Per-component backend support matrix.
 
-Rule: a component is treated as supported on a backend only when a real workload
-has been executed on that backend and recorded. Installing cleanly, importing
-successfully, or the device merely being present proves nothing.
+Rule: a component is treated as production-supported on an accelerator only when
+the real implementation has been executed end to end on that backend and recorded.
+Operator-set workloads are useful compatibility evidence, but they never authorize
+production routing by themselves. Installing cleanly, importing successfully, or
+the device merely being present proves nothing.
 
-Anything unproven falls back to CPU. That is deliberately conservative -- a wrong
-"supported" costs a mysterious runtime failure much later.
+Anything not proven end to end falls back to CPU. That is deliberately conservative
+-- a wrong "supported" costs a mysterious runtime failure much later.
 
 The matrix ships with conservative defaults and is overwritten by the
-Compatibility Spike (`spike/run_spike.py`), which writes the evidence it gathered
-on the actual machine.
+Compatibility Spike (`spike/run_spike.py`) or `svc verify-backends`, which write
+the evidence gathered on the actual machine.
 """
 
 from __future__ import annotations
@@ -37,13 +39,14 @@ class ProofLevel(StrEnum):
     #: Never executed on this backend. Treated as unsupported.
     NONE = "none"
     #: The operator set the component relies on ran on this backend.
+    #: Compatibility evidence only; never enough for production routing.
     OPS = "ops"
-    #: The real model ran end to end on this backend.
+    #: The real production implementation ran end to end on this backend.
     END_TO_END = "end_to_end"
 
 
-#: Minimum proof required before a backend is used in production.
-MIN_PROOF = ProofLevel.OPS
+#: Production routing is deliberately stricter than compatibility probing.
+MIN_PROOF = ProofLevel.END_TO_END
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,9 @@ class ComponentSupport:
     component: Component
     proofs: dict[ComputeBackend, ProofLevel] = field(default_factory=dict)
     note_he: str = ""
+    implementation_proofs: dict[str, dict[ComputeBackend, ProofLevel]] = field(
+        default_factory=dict
+    )
 
     def proof(self, backend: ComputeBackend) -> ProofLevel:
         if backend is ComputeBackend.CPU:
@@ -78,7 +84,7 @@ class SupportMatrix:
         component: Component,
         manager: DeviceManager,
     ) -> DeviceInfo:
-        """Fastest backend this component is actually proven on."""
+        """Fastest backend this component is production-proven on."""
         return manager.select(self.get(component).allowed_backends())
 
     def to_dict(self) -> dict:
@@ -87,6 +93,12 @@ class SupportMatrix:
             "components": {
                 c.value: {
                     "proofs": {b.value: p.value for b, p in s.proofs.items()},
+                    "implementation_proofs": {
+                        implementation: {
+                            b.value: p.value for b, p in per_backend.items()
+                        }
+                        for implementation, per_backend in s.implementation_proofs.items()
+                    },
                     "note_he": s.note_he,
                 }
                 for c, s in self.components.items()
@@ -101,15 +113,15 @@ DEFAULTS = SupportMatrix(
     components={
         Component.SEPARATION: ComponentSupport(
             Component.SEPARATION,
-            note_he="טרם אומת על מאיץ חומרה — רץ על המעבד עד שיוכח אחרת.",
+            note_he="טרם אומת מודל הפרדה מלא על מאיץ — מסלול הייצור נשאר על המעבד.",
         ),
         Component.F0: ComponentSupport(
             Component.F0,
-            note_he="טרם אומת על מאיץ חומרה — רץ על המעבד עד שיוכח אחרת.",
+            note_he="טרם אומת מנוע F0 ראשי מלא על מאיץ — מסלול הייצור נשאר על המעבד.",
         ),
         Component.CONVERSION: ComponentSupport(
             Component.CONVERSION,
-            note_he="טרם אומת על מאיץ חומרה — רץ על המעבד עד שיוכח אחרת.",
+            note_he="טרם אומת מודל RVC מלא על מאיץ — מסלול הייצור נשאר על המעבד.",
         ),
         Component.PITCH_SHIFT: ComponentSupport(
             Component.PITCH_SHIFT,
@@ -117,6 +129,18 @@ DEFAULTS = SupportMatrix(
         ),
     },
 )
+
+
+def _parse_proofs(raw: object) -> dict[ComputeBackend, ProofLevel]:
+    proofs: dict[ComputeBackend, ProofLevel] = {}
+    if not isinstance(raw, dict):
+        return proofs
+    for backend_name, level_name in raw.items():
+        try:
+            proofs[ComputeBackend(str(backend_name))] = ProofLevel(str(level_name))
+        except ValueError:
+            continue
+    return proofs
 
 
 def load_matrix(path: Path | None = None) -> SupportMatrix:
@@ -135,16 +159,18 @@ def load_matrix(path: Path | None = None) -> SupportMatrix:
             component = Component(name)
         except ValueError:
             continue
-        proofs: dict[ComputeBackend, ProofLevel] = {}
-        for backend_name, level_name in (entry.get("proofs") or {}).items():
-            try:
-                proofs[ComputeBackend(backend_name)] = ProofLevel(level_name)
-            except ValueError:
-                continue
+        if not isinstance(entry, dict):
+            continue
+        implementation_proofs: dict[str, dict[ComputeBackend, ProofLevel]] = {}
+        for implementation, per_backend in (entry.get("implementation_proofs") or {}).items():
+            parsed = _parse_proofs(per_backend)
+            if parsed:
+                implementation_proofs[str(implementation)] = parsed
         components[component] = ComponentSupport(
             component=component,
-            proofs=proofs,
+            proofs=_parse_proofs(entry.get("proofs")),
             note_he=str(entry.get("note_he") or ""),
+            implementation_proofs=implementation_proofs,
         )
 
     for component, fallback in DEFAULTS.components.items():

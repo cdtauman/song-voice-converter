@@ -1,15 +1,20 @@
-"""Real workloads that prove a component can run on a compute backend.
+"""Real workloads that probe component compatibility on a compute backend.
 
-The policy is in docs/reuse-policy.md and docs/architecture.md: a component
-counts as supported on a backend only when a real workload runs there and
-returns correct numbers. Importing, installing and `is_available()` prove
-nothing.
+The policy is deliberately two-level:
 
-Each workload runs the operator set the real component depends on:
+* operator-level workloads prove that the important operator family can execute;
+* only the real production implementation running end to end may authorize
+  production routing to that accelerator.
 
-    separation  -- STFT -> multi-head attention -> iSTFT   (RoFormer)
-    f0          -- the actual torchfcpe model, end to end
-    conversion  -- Conv1d -> Transformer -> ConvTranspose  (RVC)
+Importing, installing and `is_available()` prove nothing. Likewise, an operator
+smoke workload is useful evidence but must never be presented as proof that the
+real RoFormer/PolarFormer, RMVPE or RVC model is production-ready on that device.
+
+Current Phase 1 workloads:
+
+    separation  -- STFT -> multi-head attention -> iSTFT   (RoFormer operator set)
+    f0          -- the actual torchfcpe model, end to end; this is NOT RMVPE proof
+    conversion  -- Conv1d -> Transformer -> ConvTranspose  (RVC operator set)
     pitch_shift -- CPU only; python-stretch is C++ DSP with no GPU path
 
 This module is imported both by the app (`svc verify-backends`) and by the
@@ -50,6 +55,10 @@ class ProofResult:
     seconds: float
     ops: str = ""
     end_to_end: bool = False
+    implementation: str = ""
+    #: True only when this exact end-to-end workload represents the production
+    #: implementation selected for the generic component route.
+    production_eligible: bool = False
     detail: dict[str, Any] | None = None
     error: str = ""
 
@@ -93,7 +102,7 @@ def _sync(device: str) -> None:
 # --------------------------------------------------------------------------- #
 
 def workload_separation(device: str) -> dict[str, Any]:
-    """The operator set a RoFormer separator needs."""
+    """The operator set a RoFormer separator needs; not a model inference."""
     import torch
 
     sr, seconds = 44100, 2
@@ -120,12 +129,14 @@ def workload_separation(device: str) -> dict[str, Any]:
     return {
         "ops": "stft+mha+istft",
         "end_to_end": False,
+        "implementation": "roformer-operator-set",
+        "production_eligible": False,
         "output_frames": int(back.shape[-1]),
     }
 
 
 def workload_f0(device: str) -> dict[str, Any]:
-    """The real F0 model. Falls back to its operator set only if weights are absent."""
+    """Run torchfcpe end to end; it is implementation-specific, not RMVPE proof."""
     import torch
 
     sr = 16000
@@ -134,7 +145,13 @@ def workload_f0(device: str) -> dict[str, Any]:
 
     try:
         import torchfcpe
-
+    except ImportError as exc:
+        # If the optional FCPE package is absent, we can still gather operator-level
+        # compatibility evidence. Once the real package is present, however, any
+        # model load/inference/numerical failure must fail loudly rather than being
+        # hidden behind the fallback workload.
+        fallback_reason = f"{type(exc).__name__}: {exc}"[:200]
+    else:
         model = torchfcpe.spawn_bundled_infer_model(device=device)
         with torch.no_grad():
             f0 = model.infer(tone.unsqueeze(-1).to(device), sr=sr, decoder_mode="local_argmax")
@@ -147,10 +164,12 @@ def workload_f0(device: str) -> dict[str, Any]:
         return {
             "ops": "torchfcpe end-to-end",
             "end_to_end": True,
+            "implementation": "torchfcpe",
+            # SongVoice's primary F0 implementation is RMVPE. An FCPE proof is
+            # valuable, but it must not silently authorize RMVPE on this backend.
+            "production_eligible": False,
             "median_hz": round(median, 1),
         }
-    except Exception as exc:  # noqa: BLE001  weights may be unavailable offline
-        fallback_reason = f"{type(exc).__name__}: {exc}"[:200]
 
     conv = torch.nn.Sequential(
         torch.nn.Conv1d(1, 128, 9, padding=4),
@@ -167,13 +186,15 @@ def workload_f0(device: str) -> dict[str, Any]:
     return {
         "ops": "conv1d stack (fallback)",
         "end_to_end": False,
+        "implementation": "f0-operator-set",
+        "production_eligible": False,
         "fallback_reason": fallback_reason,
         "output_shape": list(out.shape),
     }
 
 
 def workload_conversion(device: str) -> dict[str, Any]:
-    """The operator set RVC inference needs."""
+    """The operator set RVC inference needs; not a real RVC model inference."""
     import torch
 
     frames, channels = 400, 256
@@ -200,6 +221,8 @@ def workload_conversion(device: str) -> dict[str, Any]:
     return {
         "ops": "conv1d+transformer+convtranspose",
         "end_to_end": False,
+        "implementation": "rvc-operator-set",
+        "production_eligible": False,
         "output_shape": list(wav.shape),
     }
 
@@ -240,6 +263,8 @@ def verify_component(component: str, device: str) -> ProofResult:
         seconds=round(time.perf_counter() - started, 2),
         ops=str(data.pop("ops", "")),
         end_to_end=bool(data.pop("end_to_end", False)),
+        implementation=str(data.pop("implementation", "")),
+        production_eligible=bool(data.pop("production_eligible", False)),
         detail=data or None,
     )
 
@@ -263,8 +288,15 @@ def verify_all(devices: list[str] | None = None) -> dict[str, dict[str, dict[str
             matrix[component][device] = entry
 
     matrix["pitch_shift"] = {
-        "cpu": {"ok": True, "seconds": 0.0, "ops": "python-stretch (cpu-only by design)",
-                "end_to_end": True, "error": ""},
+        "cpu": {
+            "ok": True,
+            "seconds": 0.0,
+            "ops": "python-stretch (cpu-only by design)",
+            "end_to_end": True,
+            "implementation": "python-stretch",
+            "production_eligible": True,
+            "error": "",
+        },
     }
     return matrix
 
@@ -277,44 +309,92 @@ _NOTES_HE = {
 }
 
 
+def _stronger_level(current: str | None, candidate: str) -> str:
+    order = {"ops": 1, "end_to_end": 2}
+    if current is None or order[candidate] > order.get(current, 0):
+        return candidate
+    return current
+
+
 def build_support_payload(
     matrix: dict[str, dict[str, dict[str, Any]]],
     source: str,
     machine: str = "",
 ) -> dict[str, Any]:
-    """Collapse raw results into the support matrix the app reads at runtime.
+    """Collapse raw results into compatibility and production-routing evidence.
 
-    Only a workload that actually ran counts. CPU is implicit and never recorded
-    as a proof -- it is the baseline.
+    CPU is implicit and never recorded as an accelerator proof. For accelerators,
+    implementation-specific evidence is preserved at its true level. The generic
+    component proof is promoted to END_TO_END only when the workload explicitly
+    represents the production implementation; otherwise it is capped at OPS.
     """
     components: dict[str, dict[str, Any]] = {}
 
     for component, per_device in matrix.items():
         proofs: dict[str, str] = {}
+        implementation_proofs: dict[str, dict[str, str]] = {}
+
         for device, entry in per_device.items():
             if device == "cpu" or not entry.get("ok"):
                 continue
-            level = "end_to_end" if entry.get("end_to_end") else "ops"
-            if proofs.get(device) != "end_to_end":
-                proofs[device] = level
+
+            raw_level = "end_to_end" if entry.get("end_to_end") else "ops"
+            implementation = str(entry.get("implementation") or "").strip()
+            if implementation:
+                per_impl = implementation_proofs.setdefault(implementation, {})
+                per_impl[device] = _stronger_level(per_impl.get(device), raw_level)
+
+            generic_level = (
+                "end_to_end"
+                if raw_level == "end_to_end" and entry.get("production_eligible")
+                else "ops"
+            )
+            proofs[device] = _stronger_level(proofs.get(device), generic_level)
 
         label = _NOTES_HE.get(component, component)
         if component == "pitch_shift":
             note = "רץ על המעבד מעצם טבעו — ספריית DSP ב-C++ בלי מסלול GPU."
+        elif component == "f0" and "torchfcpe" in implementation_proofs:
+            fcpe_e2e = sorted(
+                device
+                for device, level in implementation_proofs["torchfcpe"].items()
+                if level == "end_to_end"
+            )
+            if fcpe_e2e:
+                note = (
+                    f"{label}: torchfcpe אומת מקצה לקצה על {', '.join(fcpe_e2e)}; "
+                    "RMVPE טרם אומת, לכן מסלול הייצור נשאר על המעבד."
+                )
+            else:
+                note = f"{label}: קיימת ראיית תאימות בלבד; מסלול הייצור נשאר על המעבד."
+        elif any(level == "end_to_end" for level in proofs.values()):
+            approved = ", ".join(
+                sorted(device for device, level in proofs.items() if level == "end_to_end")
+            )
+            note = f"{label}: המימוש המלא אומת מקצה לקצה על {approved}."
         elif proofs:
             devices = ", ".join(sorted(proofs))
-            kind = "מודל מלא" if "end_to_end" in proofs.values() else \
-                "עומס אמיתי ברמת האופרטורים"
-            note = f"{label}: אומת על {devices} ({kind})."
+            note = (
+                f"{label}: תאימות אופרטורים אומתה על {devices}; "
+                "המודל המלא טרם אומת, לכן מסלול הייצור נשאר על המעבד."
+            )
         else:
-            note = f"{label}: לא אומת על שום מאיץ — רץ על המעבד."
+            note = f"{label}: לא אומת על שום מאיץ — מסלול הייצור נשאר על המעבד."
 
-        components[component] = {"proofs": proofs, "note_he": note}
+        components[component] = {
+            "proofs": proofs,
+            "implementation_proofs": implementation_proofs,
+            "note_he": note,
+        }
 
     for component in (*WORKLOAD_COMPONENTS, "pitch_shift"):
         components.setdefault(
             component,
-            {"proofs": {}, "note_he": f"{_NOTES_HE.get(component, component)}: לא נבדק."},
+            {
+                "proofs": {},
+                "implementation_proofs": {},
+                "note_he": f"{_NOTES_HE.get(component, component)}: לא נבדק.",
+            },
         )
 
     return {
