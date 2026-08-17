@@ -1,8 +1,9 @@
 """SongVoice engine CLI.
 
 Phase 1 commands:
-    svc doctor        system check
-    svc serve         run the RPC engine on stdin/stdout
+    svc doctor             system check
+    svc verify-backends    compatibility / production-proof check
+    svc serve              run the RPC engine on stdin/stdout
     svc version
 """
 
@@ -39,7 +40,7 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def _cmd_verify_backends(args: argparse.Namespace) -> int:
-    """Prove, on this machine, which components can run on which accelerator."""
+    """Probe compatibility and record only qualified production-routing proof."""
     import json
     import platform
 
@@ -48,7 +49,7 @@ def _cmd_verify_backends(args: argparse.Namespace) -> int:
 
     devices = available_devices()
     if not args.json:
-        print("בודקים אילו שלבים יכולים לרוץ על כל מאיץ…")
+        print("בודקים תאימות מאיצים והאם קיים אימות מלא למסלול הייצור…")
         print(f"מכשירים שנבדקים: {', '.join(devices)}\n")
 
     matrix = verify_all(devices)
@@ -71,11 +72,18 @@ def _cmd_verify_backends(args: argparse.Namespace) -> int:
             for device in devices:
                 entry = per_device.get(device)
                 if entry is None:
-                    cells.append("—".ljust(6))
+                    mark = "—"
+                elif not entry.get("ok"):
+                    mark = "❌"
+                elif device == "cpu":
+                    mark = "✅"
+                elif entry.get("end_to_end") and entry.get("production_eligible"):
+                    mark = "✅"
                 else:
-                    cells.append(("✅" if entry.get("ok") else "❌").ljust(6))
+                    mark = "🟡"
+                cells.append(mark.ljust(6))
             print(names_he.get(component, component).ljust(width + 2) + "  ".join(cells))
-        print()
+        print("\n✅ מסלול ייצור מאומת · 🟡 תאימות/מימוש מסוים בלבד · ❌ נכשל")
         for data in payload["components"].values():
             print(f"  {data['note_he']}")
 
@@ -90,8 +98,8 @@ def _cmd_verify_backends(args: argparse.Namespace) -> int:
     accelerated = [d for d in devices if d != "cpu"]
     if not accelerated:
         return _EXIT_WARN
-    any_proof = any(data["proofs"] for data in payload["components"].values())
-    return _EXIT_OK if any_proof else _EXIT_WARN
+    any_evidence = any(data["proofs"] for data in payload["components"].values())
+    return _EXIT_OK if any_evidence else _EXIT_WARN
 
 
 def _cmd_serve(_: argparse.Namespace) -> int:
@@ -115,7 +123,10 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("-v", "--verbose", action="store_true", help="הצג פרטים טכניים")
     d.set_defaults(func=_cmd_doctor)
 
-    b = sub.add_parser("verify-backends", help="אימות אילו שלבים רצים על כל מאיץ")
+    b = sub.add_parser(
+        "verify-backends",
+        help="בדיקת תאימות ואימות מלא של מסלולי האצה",
+    )
     b.add_argument("--json", action="store_true", help="פלט JSON במקום טקסט")
     b.add_argument("--write", action="store_true",
                    help="לשמור את התוצאה כמטריצת התמיכה של האפליקציה")
