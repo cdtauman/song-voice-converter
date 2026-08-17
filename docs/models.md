@@ -47,7 +47,7 @@
 | Mel-Band Roformer DeEcho (Sucial) | הסרת הד | [HF](https://huggingface.co/Sucial/Dereverb-Echo_Mel_Band_Roformer) | **CC-BY-NC-SA-4.0** | HF API, 17.8.2026 | audio-separator | MIT | ⛔ **אסור בהפצה** (לא-מסחרי) |
 | Mel-Band Roformer Denoise (aufr33) | ניקוי רעש | [HF](https://huggingface.co/poiqazwsx/melband-roformer-denoise) | **אין הצהרה** | HF API — שדה ריק, 17.8.2026 | audio-separator | MIT | ⚠️ פרטי בלבד |
 | HTDemucs4 FT | פיצול בס/תופים/שאר | [GitHub](https://github.com/facebookresearch/demucs) | **MIT** | GitHub API | demucs | MIT | ✅ בליבה |
-| RMVPE (משקולות) | זיהוי F0 — עיקרי | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | **MIT** | HF API | [Dream-High/RMVPE](https://github.com/Dream-High/RMVPE) | Apache-2.0 | ✅ בליבה |
+| RMVPE (משקולות) | זיהוי F0 — עיקרי | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | **MIT** | HF API `cardData.license`, 18.8.2026 | RVC `infer/rmvpe.py` (מוטמע, ראה third-party §1.3) | MIT | ✅ בליבה — Phase 3 |
 | ContentVec / HuBERT (`hubert_base.pt`) | הפרדת תוכן מגוון | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | **MIT** | HF API | [contentvec](https://github.com/auspicious3000/contentvec) | MIT | ✅ בליבה |
 | FCPE | זיהוי F0 — מהיר ל-Preview | `torchfcpe` | MIT | PyPI / repo | torchfcpe | MIT | ✅ בליבה |
 | `blaise-tk/TITAN` | מודל בסיס לאימון RVC | [HF](https://huggingface.co/blaise-tk/TITAN) | **Apache-2.0** | HF API `cardData.license` | RVC trainer | MIT | ✅ בליבה |

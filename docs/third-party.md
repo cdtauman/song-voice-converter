@@ -23,9 +23,20 @@
 | [`torchfcpe`](https://pypi.org/project/torchfcpe/) | 0.0.4 | MIT | זיהוי F0 מהיר | 1 — שימוש ישיר (Phase 3) |
 | `ffmpeg` | build חיצוני | LGPL | קליטה, ייצוא, `loudnorm`/`alimiter`/`acompressor` | 1 — קישור דינמי, נקרא כתהליך |
 
-**אף שורת קוד לא הועתקה לריפו הזה.** דרגה 4 בסולם ("הכנסת תת-קבוצה") טרם נדרשה.
-כשתידרש — ב-Phase 5, לחילוץ קוד ה-inference של RVC — תיפתח כאן טבלה נפרדת עם
-נתיב הקובץ וה-commit המדויק.
+### 1.3 קוד שהועתק לריפו (דרגה 4 — הכנסת תת-קבוצה)
+
+| מה | ריפו + commit | קובץ מקור | היעד אצלנו | רישיון |
+|----|----------------|-----------|-------------|--------|
+| ארכיטקטורת RMVPE + inference | [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) @ `81eed5e` | `infer/rmvpe.py` | `src/svc_engine/analysis/rmvpe_model.py` | **MIT** |
+
+**למה הועתק ולא נצרך כתלות:** ל-RMVPE אין חבילת `pip` עצמאית ויציבה; מחלקות הרשת
+(`E2E`, `DeepUnet`, `MelSpectrogram` וכו') חייבות להתאים בדיוק לשמות ולצורות
+שבהן אומן `rmvpe.pt`, אחרת `load_state_dict` נכשל. **מה שהוסר מהמקור:** מסלול
+ה-fp16, ענף ה-DirectML/ONNX, לכידת CUDA-graph, והתלות ב-`configs.config` —
+כולם קשרו את הקוד לאפליקציה המארחת. הארכיטקטורה עצמה הועתקה מילה-במילה.
+
+טענת "אף שורת קוד לא הועתקה" מ-Phase 2 כבר אינה נכונה החל מ-Phase 3: זו ההעתקה
+הראשונה, והיא היחידה עד כה. דרגה 4 נוספת צפויה ב-Phase 5 (RVC inference).
 
 ### 1.2 התאמות שנעשו מעל הספריות, ולמה
 
@@ -43,14 +54,15 @@
 
 ## 2. משקולות מודלים
 
-**כל שורה אומתה מול `huggingface.co/api/models/<id>` ב-17.8.2026,**
-וכל כתובת נבדקה בפועל באותו יום. מקור האמת התפעולי הוא
+**כל שורה אומתה מול `huggingface.co/api/models/<id>` ב-17.8.2026** (שורת ה-RMVPE
+נוספה ואומתה ב-18.8.2026), וכל כתובת נבדקה בפועל. מקור האמת התפעולי הוא
 [`src/svc_engine/data/models.json`](../src/svc_engine/data/models.json);
 הטבלה כאן היא הסיכום לקריאה אנושית.
 
 | מזהה בקטלוג | מקור | רישיון | הפצה? |
 |--------------|------|--------|--------|
 | `sep_melband_kim` | [KimberleyJSN/melbandroformer](https://huggingface.co/KimberleyJSN/melbandroformer) | **MIT** | ✅ כן |
+| `f0_rmvpe` | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | **MIT** | ✅ כן |
 | `sep_melband_kim_ft2` | [pcunwa/Kim-Mel-Band-Roformer-FT](https://huggingface.co/pcunwa/Kim-Mel-Band-Roformer-FT) | אין הצהרה | ⚠️ פרטי בלבד |
 | `sep_bs_roformer_1297` | UVR model repo | אין הצהרה | ⚠️ פרטי בלבד |
 | `karaoke_aufr33_viperx` | UVR model repo | אין הצהרה | ⚠️ פרטי בלבד |
@@ -78,7 +90,7 @@
 |------|---------------------|---------|
 | [mason369/AI-RVC](https://github.com/mason369/AI-RVC) (MIT) | סדר צינור ההפרדה, DeReverb, ניהול מודלים | הסדר אומץ כרעיון; הקוד לא — הוא עוטף את אותה `audio-separator` שאנחנו עוטפים ישירות |
 | [IAHispano/Applio](https://github.com/IAHispano/Applio) (MIT) | ניהול והורדת מודלים | לא נדרש כאן; רלוונטי ל-Phase 9 (אימון) |
-| [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) (MIT) | — | לא נדרש עד Phase 5 |
+| [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) (MIT) | קוד ה-RMVPE (`infer/rmvpe.py`) | **נלקח ב-Phase 3** — ראה §1.3. קוד ה-RVC inference עצמו עדיין ל-Phase 5 |
 
 ---
 
@@ -86,7 +98,7 @@
 
 | שלב | מה צפוי | דרגה צפויה בסולם |
 |------|----------|--------------------|
-| Phase 3 | משקולות RMVPE (MIT, `lj1995/VoiceConversionWebUI`) | 1 — שימוש ישיר |
+| Phase 3 | ✅ **נעשה** — משקולות RMVPE (§2) + קוד RMVPE (§1.3) + `torchfcpe` (§1.1) | 1 + 4 |
 | Phase 5 | קוד ה-inference של RVC v2, ו-ContentVec/HuBERT | **4 — הכנסת תת-קבוצה.** מחייב נתיבי קבצים ו-commit מדויקים כאן |
 | Phase 9 | מנגנון האימון של Applio, מודל בסיס TITAN (Apache-2.0) | 3–4 |
 | Phase 10 | Seed-VC (GPL-3.0) | **סביבה מבודדת בלבד — לעולם לא בליבה** |

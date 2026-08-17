@@ -25,6 +25,11 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
 ]
+# Optional inspection extra: `svc analyze --plot` draws the F0 curve with it.
+# Not part of the locked runtime matrix; the CLI degrades gracefully without it.
+plot = [
+    "matplotlib>=3.7",
+]
 
 [project.scripts]
 svc = "svc_engine.cli:main"

@@ -40,6 +40,7 @@ class ModelKind(StrEnum):
     DEECHO = "deecho"
     DENOISE = "denoise"
     STEMS = "stems"
+    F0 = "f0"
 
 
 @dataclass(frozen=True)

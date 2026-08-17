@@ -2,6 +2,41 @@
 
 ---
 
+## 18.8.2026 — Phase 3: מנוע הניתוח
+
+הדוח המלא: [phase-reports/phase-3.md](phase-reports/phase-3.md).
+
+### מה נוסף
+
+- **מנוע ניתוח** (`src/svc_engine/analysis/`): עקומת F0, מנעד משוקלל-אנרגיה
+  ביחידות MIDI, זיהוי סולם (Krumhansl-Schmuckler), זיהוי מקטעי שירה, ובחירת
+  קטע Preview מנוקד. כל המתמטיקה ב-numpy טהור ומכוסה בבדיקות בלי המחסנית הכבדה.
+- **שתי שיטות F0 מאחורי ממשק אחד:** FCPE (מהיר, מאומת על מאיץ) ו-RMVPE (מדויק).
+- **פרופיל מנעד לקול יעד** (`src/svc_engine/profiles/`).
+- פקודות `svc analyze` ו-`svc profile`.
+
+### תיקונים ואימותים עובדתיים (18.8.2026)
+
+| # | מה נבדק | התוצאה | מקור |
+|---|----------|---------|------|
+| 1 | רישיון משקולות RMVPE | **MIT** מאומת | `huggingface.co/api/models/lj1995/VoiceConversionWebUI` → `cardData.license == 'mit'` |
+| 2 | קוד RMVPE — האם יש חבילת pip? | אין; הקוד **הועתק** מ-RVC (`infer/rmvpe.py`, commit `81eed5e`, MIT) והותאם. ראה [third-party.md §1.3](third-party.md) | בדיקת PyPI + GitHub |
+| 3 | האם RMVPE רץ על XPU? | **לא אומת** — `torch.stft` על XPU לא הוכח מקצה לקצה. RMVPE נשאר על המעבד; FCPE הוא מסלול המאיץ | מטריצת התמיכה של Phase 1 |
+
+### נקודת פתיחה, לא ברירת מחדל מכוילת
+
+משקלי בחירת ה-Preview (`density/stability/width/recurrence`) ומשקלי המנעד הם
+**ערכי התחלה מתועדים**, לא כיול — הכיול שייך לבנצ'מרק, בדיוק כפי ש-[testing.md](testing.md)
+דורש. `pick_preview` מחזיר את הפירוק המלא כדי שיהיה על מה לכייל.
+
+### הסייג הפתוח
+
+שיפוט "האם קטע ה-Preview הגיוני" על **5 שירי בדיקה אמיתיים** ממתין לחומרי הבדיקה
+שטרם נמסרו — אותו חסם בדיוק של Phase 2. הצינור אומת על אות סינתטי בעל אמת ידועה
+(A3→E4) ועל הרצות CLI מלאות.
+
+---
+
 ## 17.8.2026 — Phase 2: מנוע ההפרדה
 
 הדוח המלא: [phase-reports/phase-2.md](phase-reports/phase-2.md).

@@ -237,6 +237,32 @@
           ]
         }
       ]
+    },
+
+    "f0_rmvpe": {
+      "kind": "f0",
+      "backend": "rmvpe",
+      "engine_model": "rmvpe.pt",
+      "display_name_he": "זיהוי גובה מדויק (RMVPE)",
+      "stems": [],
+      "sdr": null,
+      "license": {
+        "spdx": "MIT",
+        "verified_at": "2026-08-18",
+        "source": "huggingface.co/api/models/lj1995/VoiceConversionWebUI -> cardData.license == 'mit'; network reachability + SHA-256 checked 2026-08-18",
+        "note_he": "רישיון MIT מאומת — מותר להפצה. משקולות RMVPE להפקת עקומת הגובה."
+      },
+      "note_he": "מודל זיהוי הגובה המדויק לניתוח ולהמרה הסופית. רץ על המעבד עד שיאומת מקצה לקצה על מאיץ. קוד ה-inference מוטמע מ-RVC (MIT) — ראה docs/third-party.md.",
+      "files": [
+        {
+          "name": "rmvpe.pt",
+          "size_bytes": 181184272,
+          "sha256": "6d62215f4306e3ca278246188607209f09af3dc77ed4232efdd069798c4ec193",
+          "urls": [
+            "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt"
+          ]
+        }
+      ]
     }
   }
 }

@@ -4,6 +4,8 @@
     svc verify-backends  compatibility / production-proof check
     svc models           inspect / fetch the model catalogue
     svc separate         split a song into stems
+    svc analyze          F0 / range / key / segments / preview of a vocal
+    svc profile          compute a target voice's range profile
     svc serve            run the RPC engine on stdin/stdout
     svc version
 """
@@ -13,6 +15,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import sys
+from pathlib import Path
 
 from svc_engine import __version__
 from svc_engine.config import paths
@@ -190,6 +193,100 @@ def _cmd_separate(args: argparse.Namespace) -> int:
     return _EXIT_OK
 
 
+def _f0_extractor_and_device(method: str, no_download: bool):  # type: ignore[no-untyped-def]
+    """Build the requested F0 extractor and pick the device it is proven on."""
+    from svc_engine.analysis.f0 import RMVPE_MODEL_ID, FcpeExtractor, RmvpeExtractor
+    from svc_engine.backends.base import DeviceHint
+    from svc_engine.compute import Component, DeviceManager, load_matrix
+    from svc_engine.resources import DownloadManager, load_registry
+
+    p = paths()
+    if method == "rmvpe":
+        registry = load_registry()
+        spec = registry.get(RMVPE_MODEL_ID)
+        downloader = DownloadManager(p.models, allow_downloads=not no_download)
+        downloader.check_space_for([spec])
+        last = ""
+
+        def show(progress: object) -> None:
+            nonlocal last
+            text = progress.message_he  # type: ignore[attr-defined]
+            if text != last:
+                print(text, end="\r", flush=True)
+                last = text
+
+        downloader.ensure_model(spec, on_progress=show)
+        weights = spec.files[0].path_in(p.models)
+        # RMVPE has no accelerator proof yet: it runs on CPU by design.
+        return RmvpeExtractor(weights), DeviceHint()
+
+    # FCPE: routed only onto a backend where torchfcpe itself was proven.
+    manager = DeviceManager()
+    matrix = load_matrix()
+    device = matrix.device_for_implementation(Component.F0, "torchfcpe", manager)
+    return FcpeExtractor(), DeviceHint.from_device(device)
+
+
+def _cmd_analyze(args: argparse.Namespace) -> int:
+    import json
+
+    from svc_engine.analysis import analyze_vocal, plot_report
+    from svc_engine.audio import io as audio_io
+
+    p = paths()
+    p.ensure()
+    extractor, device = _f0_extractor_and_device(args.method, args.no_download)
+    audio = audio_io.load_audio(args.input, duration_seconds=args.seconds)
+
+    if not args.quiet:
+        print("מנתחים את השירה — גובה, מנעד, סולם, מקטעים…")
+    report = analyze_vocal(
+        audio, extractor, device, source=Path(args.input).name
+    )
+    extractor.unload()
+
+    print(report.summary_he())
+    if args.report:
+        Path(args.report).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.report).write_text(
+            json.dumps(report.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"  📄 דוח: {args.report}")
+    if args.plot:
+        try:
+            plot_report(report, args.plot)
+            print(f"  📈 גרף: {args.plot}")
+        except RuntimeError as exc:
+            print(f"  ⚠️ {exc}")
+    return _EXIT_OK
+
+
+def _cmd_profile(args: argparse.Namespace) -> int:
+    from svc_engine.audio import io as audio_io
+    from svc_engine.profiles import compute_profile
+
+    p = paths()
+    p.ensure()
+    extractor, device = _f0_extractor_and_device(args.method, args.no_download)
+    audio = audio_io.load_audio(args.input, duration_seconds=args.seconds)
+
+    if not args.quiet:
+        print("מחשבים פרופיל מנעד לקול היעד…")
+    name = args.name or Path(args.input).stem
+    profile = compute_profile(audio, extractor, name=name, device=device)
+    extractor.unload()
+
+    print(
+        f"{profile.name}: נוח {profile.to_dict()['comfort_low_note']}–"
+        f"{profile.to_dict()['comfort_high_note']} · "
+        f"טווח {profile.comfortable_span:.1f} חצאי-טונים"
+    )
+    if args.out:
+        profile.save(args.out)
+        print(f"  📄 פרופיל: {args.out}")
+    return _EXIT_OK
+
+
 def _cmd_serve(_: argparse.Namespace) -> int:
     from svc_engine.rpc import serve_stdio
 
@@ -248,6 +345,37 @@ def build_parser() -> argparse.ArgumentParser:
     sep.add_argument("--no-download", action="store_true", help="לא להוריד מודלים חסרים")
     sep.add_argument("-q", "--quiet", action="store_true", help="בלי הודעות התקדמות")
     sep.set_defaults(func=_cmd_separate)
+
+    an = sub.add_parser("analyze", help="ניתוח שירה: גובה, מנעד, סולם, מקטעים, Preview")
+    an.add_argument("input", help="קובץ הווקאל (רצוי שירה מופרדת)")
+    an.add_argument(
+        "--method", choices=["fcpe", "rmvpe"], default="fcpe",
+        help="שיטת זיהוי הגובה: fcpe (מהיר, ברירת מחדל) או rmvpe (מדויק)",
+    )
+    an.add_argument("--report", metavar="FILE", help="לכתוב דוח JSON לקובץ")
+    an.add_argument("--plot", metavar="FILE", help="לצייר גרף F0 לקובץ (דורש matplotlib)")
+    an.add_argument(
+        "--seconds", type=float, default=None,
+        help="לנתח רק את X השניות הראשונות (לבדיקות)",
+    )
+    an.add_argument("--no-download", action="store_true", help="לא להוריד מודלים חסרים")
+    an.add_argument("-q", "--quiet", action="store_true", help="בלי הודעות התקדמות")
+    an.set_defaults(func=_cmd_analyze)
+
+    pr = sub.add_parser("profile", help="חישוב פרופיל מנעד לקול יעד מדגימת אודיו")
+    pr.add_argument("input", help="דגימת אודיו של הקול")
+    pr.add_argument("--name", help="שם הקול (ברירת מחדל: שם הקובץ)")
+    pr.add_argument("--out", metavar="FILE", help="לשמור את הפרופיל כ-JSON")
+    pr.add_argument(
+        "--method", choices=["fcpe", "rmvpe"], default="fcpe",
+        help="שיטת זיהוי הגובה",
+    )
+    pr.add_argument(
+        "--seconds", type=float, default=None, help="להשתמש רק ב-X השניות הראשונות"
+    )
+    pr.add_argument("--no-download", action="store_true", help="לא להוריד מודלים חסרים")
+    pr.add_argument("-q", "--quiet", action="store_true", help="בלי הודעות התקדמות")
+    pr.set_defaults(func=_cmd_profile)
 
     s = sub.add_parser("serve", help="הרצת המנוע במצב RPC")
     s.set_defaults(func=_cmd_serve)
