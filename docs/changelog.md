@@ -2,6 +2,22 @@
 
 ---
 
+## 19.8.2026 — Phase 7: ניהול משימות ושרידות
+
+הדוח המלא: [phase-reports/phase-7.md](phase-reports/phase-7.md).
+
+- נוספו `jobs/runner.py`, `cache.py`, `cancel.py`, `recovery.py`: DAG, התקדמות,
+  cache לפי תוכן+פרמטרים+תלויות, publication אטומי, token ביטול והמשך אחרי crash.
+- נוספו `projects/` עם JSON גרסאי אטומי ו־last-known-good, ו־`history/` עם SQLite
+  WAL. ממשקי RPC דקים מאפשרים ל־Phase 8 לקרוא recovery/history/cache ופרויקטים
+  בלי לייבא AI ל־app.
+- מדיניות `keep_cache_gb` נאכפת ב־LRU; scratch ותיקיות cache זמניות מנוקים בבטחה,
+  עם בדיקות נתיבים שמתאימות ל־Windows ואינן עוקבות מחוץ ל־root.
+- `tools/bench_jobs.py` הרג worker מתוך כל ארבעת הצעדים, המשיך בהצלחה בכל מקרה,
+  הוכיח 100% cache hit בהרצה זהה ומדד force-cancel בפחות משלוש שניות.
+
+---
+
 ## 19.8.2026 — Phase 6: תיקונים ומיקס
 
 הדוח המלא: [phase-reports/phase-6.md](phase-reports/phase-6.md).

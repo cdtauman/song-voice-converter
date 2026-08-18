@@ -6,6 +6,7 @@ library. All heavy work happens in the engine process.
 
 from __future__ import annotations
 
+import contextlib
 import itertools
 import subprocess
 import sys
@@ -61,9 +62,30 @@ class EngineClient:
         try:
             if proc.stdin:
                 proc.stdin.close()
-            proc.wait(timeout=3)
+            # Reserve the final half-second for forceful termination so the
+            # complete cancellation path, not merely the polite wait, fits the
+            # Phase-7 three-second deadline.
+            proc.wait(timeout=2.5)
         except (subprocess.TimeoutExpired, OSError):
-            proc.kill()
+            with contextlib.suppress(OSError):
+                proc.terminate()
+            try:
+                proc.wait(timeout=0.25)
+            except (subprocess.TimeoutExpired, OSError):
+                with contextlib.suppress(OSError):
+                    proc.kill()
+                with contextlib.suppress(subprocess.TimeoutExpired, OSError):
+                    proc.wait(timeout=0.25)
+
+    def cancel_current(self) -> None:
+        """Cancel current work at the process boundary within three seconds.
+
+        Closing stdin is the cooperative request for an idle server. A busy
+        engine cannot read another RPC message, so ``stop`` enforces the
+        architecture's kill fallback. The next call starts a fresh engine;
+        Phase-7 recovery resumes from the last atomically completed step.
+        """
+        self.stop()
 
     @property
     def is_running(self) -> bool:
@@ -99,6 +121,27 @@ class EngineClient:
 
     def doctor(self) -> dict[str, Any]:
         return dict(self.call("doctor"))
+
+    def recoverable_jobs(self) -> list[dict[str, Any]]:
+        return list(self.call("jobs.recoverable"))
+
+    def job_history(self, limit: int = 100) -> list[dict[str, Any]]:
+        return list(self.call("jobs.history", limit=limit))
+
+    def cleanup_jobs(self) -> dict[str, int]:
+        return dict(self.call("jobs.cleanup"))
+
+    def cache_stats(self) -> dict[str, int]:
+        return dict(self.call("cache.stats"))
+
+    def list_projects(self) -> list[dict[str, Any]]:
+        return list(self.call("projects.list"))
+
+    def load_project(self, project_id: str) -> dict[str, Any]:
+        return dict(self.call("projects.load", project_id=project_id))
+
+    def save_project(self, project_id: str, name: str, data: dict[str, Any]) -> dict[str, Any]:
+        return dict(self.call("projects.save", project_id=project_id, name=name, data=data))
 
     # -- context manager --------------------------------------------------- #
 

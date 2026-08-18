@@ -1,6 +1,8 @@
 """Engine-side RPC loop.
 
-Phase 1 exposes two methods: `ping` and `doctor`. Job methods arrive in Phase 7.
+The transport stays free of AI imports. Phase 7 adds durable project/job
+inspection methods; concrete processing jobs remain engine-owned Python graphs,
+never executable callables supplied over JSON.
 """
 
 from __future__ import annotations
@@ -9,7 +11,7 @@ import sys
 from collections.abc import Callable
 from typing import Any, TextIO
 
-from svc_engine.config import paths
+from svc_engine.config import Paths, load_settings, paths
 from svc_engine.diag import run_all_checks
 from svc_engine.diag.report import overall_status
 from svc_engine.errors import EngineError, ErrorCode, message_for
@@ -24,10 +26,19 @@ __all__ = ["Server", "serve_stdio"]
 
 
 class Server:
-    def __init__(self) -> None:
+    def __init__(self, app_paths: Paths | None = None) -> None:
+        self._paths = app_paths or paths()
+        self._paths.ensure()
         self._handlers: dict[str, Handler] = {
             "ping": self._ping,
             "doctor": self._doctor,
+            "jobs.recoverable": self._jobs_recoverable,
+            "jobs.history": self._jobs_history,
+            "jobs.cleanup": self._jobs_cleanup,
+            "cache.stats": self._cache_stats,
+            "projects.list": self._projects_list,
+            "projects.load": self._projects_load,
+            "projects.save": self._projects_save,
         }
 
     # -- methods ----------------------------------------------------------- #
@@ -36,8 +47,7 @@ class Server:
         return {"pong": True, "protocol": PROTOCOL_VERSION, "echo": params.get("echo")}
 
     def _doctor(self, params: dict[str, Any]) -> dict[str, Any]:
-        p = paths()
-        results = run_all_checks(p.work)
+        results = run_all_checks(self._paths.work)
         return {
             "overall": overall_status(results).value,
             "checks": [
@@ -51,6 +61,61 @@ class Server:
                 for r in results
             ],
         }
+
+    def _jobs_recoverable(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        from svc_engine.jobs import RecoveryStore
+
+        snapshots = RecoveryStore(self._paths.root / "jobs").discover()
+        return [
+            {
+                "job_id": item.job_id,
+                "name": item.name,
+                "status": item.status.value,
+                "updated_at": item.updated_at,
+                "completed_steps": sum(
+                    step.status.value in {"completed", "cached"} for step in item.steps.values()
+                ),
+                "total_steps": len(item.steps),
+            }
+            for item in snapshots
+        ]
+
+    def _jobs_history(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        from svc_engine.history import HistoryStore
+
+        limit = int(params.get("limit", 100))
+        return [item.to_dict() for item in HistoryStore(self._paths.db).list(limit=limit)]
+
+    def _jobs_cleanup(self, params: dict[str, Any]) -> dict[str, int]:
+        from svc_engine.jobs import JobRunner
+
+        return JobRunner(self._paths, settings=load_settings(self._paths)).cleanup()
+
+    def _cache_stats(self, params: dict[str, Any]) -> dict[str, int]:
+        from svc_engine.jobs import StepCache
+
+        stats = StepCache(self._paths.cache / "steps").stats()
+        return {"entries": stats.entries, "size_bytes": stats.size_bytes}
+
+    def _projects_list(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        from svc_engine.projects import ProjectStore
+
+        return [item.to_dict() for item in ProjectStore(self._paths.projects).list()]
+
+    def _projects_load(self, params: dict[str, Any]) -> dict[str, Any]:
+        from svc_engine.projects import ProjectStore
+
+        return ProjectStore(self._paths.projects).load(str(params["project_id"])).to_dict()
+
+    def _projects_save(self, params: dict[str, Any]) -> dict[str, Any]:
+        from svc_engine.projects import ProjectStore
+
+        data = params.get("data")
+        if not isinstance(data, dict):
+            raise ValueError("project data must be an object")
+        return ProjectStore(self._paths.projects).save(
+            str(params["project_id"]), name=str(params["name"]), data=data
+        ).to_dict()
 
     # -- dispatch ---------------------------------------------------------- #
 

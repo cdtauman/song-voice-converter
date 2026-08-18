@@ -1,0 +1,84 @@
+{
+  "phase": 7,
+  "generated_at": "2026-08-18T23:11:24Z",
+  "stages": [
+    "separate",
+    "analyze",
+    "convert",
+    "master"
+  ],
+  "crash_matrix": [
+    {
+      "crash_stage": "separate",
+      "hard_exit_code": 91,
+      "recovery_snapshot": "running",
+      "predecessors_reused": [],
+      "call_counts": {
+        "separate": 2,
+        "analyze": 1,
+        "convert": 1,
+        "master": 1
+      },
+      "second_job_all_cache_hits": true,
+      "scratch_clean": true
+    },
+    {
+      "crash_stage": "analyze",
+      "hard_exit_code": 91,
+      "recovery_snapshot": "running",
+      "predecessors_reused": [
+        "separate"
+      ],
+      "call_counts": {
+        "separate": 1,
+        "analyze": 2,
+        "convert": 1,
+        "master": 1
+      },
+      "second_job_all_cache_hits": true,
+      "scratch_clean": true
+    },
+    {
+      "crash_stage": "convert",
+      "hard_exit_code": 91,
+      "recovery_snapshot": "running",
+      "predecessors_reused": [
+        "separate",
+        "analyze"
+      ],
+      "call_counts": {
+        "separate": 1,
+        "analyze": 1,
+        "convert": 2,
+        "master": 1
+      },
+      "second_job_all_cache_hits": true,
+      "scratch_clean": true
+    },
+    {
+      "crash_stage": "master",
+      "hard_exit_code": 91,
+      "recovery_snapshot": "running",
+      "predecessors_reused": [
+        "separate",
+        "analyze",
+        "convert"
+      ],
+      "call_counts": {
+        "separate": 1,
+        "analyze": 1,
+        "convert": 1,
+        "master": 2
+      },
+      "second_job_all_cache_hits": true,
+      "scratch_clean": true
+    }
+  ],
+  "forced_cancellation": {
+    "cooperative": false,
+    "seconds": 0.0779999999795109,
+    "under_three_seconds": true
+  },
+  "cache_rule": "input content + parameters + dependency keys + step version",
+  "result": "pass"
+}

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import io
 import json
+from pathlib import Path
 
+from svc_engine.config import paths
 from svc_engine.rpc import Request, Response, Server, decode_request, decode_response, encode
 from svc_engine.rpc.server import serve_stdio
 
@@ -71,3 +73,28 @@ def test_serve_stdio_handles_a_full_session() -> None:
     assert len(lines) == 2
     assert json.loads(lines[0])["result"]["echo"] == "a"
     assert json.loads(lines[1])["result"]["echo"] == "b"
+
+
+def test_phase7_project_cache_and_history_methods(tmp_path: Path) -> None:
+    server = Server(paths(tmp_path))
+    saved = server.handle(
+        Request(
+            id="save",
+            method="projects.save",
+            params={"project_id": "demo", "name": "דמו", "data": {"quality": "max"}},
+        )
+    )
+    listed = server.handle(Request(id="list", method="projects.list"))
+    loaded = server.handle(
+        Request(id="load", method="projects.load", params={"project_id": "demo"})
+    )
+    cache = server.handle(Request(id="cache", method="cache.stats"))
+    history = server.handle(Request(id="history", method="jobs.history"))
+    recoverable = server.handle(Request(id="recovery", method="jobs.recoverable"))
+
+    assert saved.ok and saved.result["name"] == "דמו"
+    assert listed.ok and len(listed.result) == 1
+    assert loaded.ok and loaded.result["data"]["quality"] == "max"
+    assert cache.ok and cache.result == {"entries": 0, "size_bytes": 0}
+    assert history.ok and history.result == []
+    assert recoverable.ok and recoverable.result == []
