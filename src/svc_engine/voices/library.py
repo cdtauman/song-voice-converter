@@ -15,6 +15,7 @@ from pathlib import Path
 from svc_engine.backends.conversion import VoiceHandle
 from svc_engine.config import Paths
 from svc_engine.config import paths as default_paths
+from svc_engine.errors import EngineError, ErrorCode
 from svc_engine.profiles import VoiceProfile
 from svc_engine.voices.manifest import (
     INDEX_FILE,
@@ -24,6 +25,7 @@ from svc_engine.voices.manifest import (
     HealthState,
     HealthStatus,
     VoiceManifest,
+    is_canonical_voice_id,
 )
 
 __all__ = ["VoiceLibrary", "VoiceEntry", "looks_like_torch_checkpoint"]
@@ -100,23 +102,38 @@ class VoiceLibrary:
             return []
         entries: list[VoiceEntry] = []
         for child in sorted(self.root.iterdir()):
-            if not child.is_dir() or not (child / VOICE_FILE).exists():
+            if not is_canonical_voice_id(child.name):
                 continue
             try:
-                manifest = VoiceManifest.load(child)
-            except (OSError, ValueError):
+                voice_dir = self._voice_dir(child.name)
+                if not voice_dir.is_dir() or not (voice_dir / VOICE_FILE).exists():
+                    continue
+                manifest = VoiceManifest.load(voice_dir)
+            except (EngineError, OSError, ValueError):
                 continue
-            entries.append(VoiceEntry(manifest=manifest, root=child))
+            if manifest.voice_id != child.name or not is_canonical_voice_id(manifest.voice_id):
+                continue
+            entries.append(VoiceEntry(manifest=manifest, root=voice_dir))
         return entries
 
     def __contains__(self, voice_id: object) -> bool:
-        return isinstance(voice_id, str) and (self.root / voice_id / VOICE_FILE).exists()
+        if not isinstance(voice_id, str) or not is_canonical_voice_id(voice_id):
+            return False
+        try:
+            return (self._voice_dir(voice_id) / VOICE_FILE).is_file()
+        except EngineError:
+            return False
 
     def get(self, voice_id: str) -> VoiceEntry:
-        voice_dir = self.root / voice_id
+        voice_dir = self._voice_dir(voice_id)
         if not (voice_dir / VOICE_FILE).exists():
             raise KeyError(f"unknown voice id: {voice_id}")
-        return VoiceEntry(manifest=VoiceManifest.load(voice_dir), root=voice_dir)
+        manifest = VoiceManifest.load(voice_dir)
+        if manifest.voice_id != voice_id or not is_canonical_voice_id(manifest.voice_id):
+            raise EngineError(
+                ErrorCode.VOICE_CORRUPT, "voice manifest id does not match its folder"
+            )
+        return VoiceEntry(manifest=manifest, root=voice_dir)
 
     # -- health ------------------------------------------------------------- #
 
@@ -143,9 +160,23 @@ class VoiceLibrary:
 
     def remove(self, voice_id: str) -> None:
         """Delete a voice folder and everything in it. Idempotent."""
-        voice_dir = self.root / voice_id
+        voice_dir = self._voice_dir(voice_id)
         if voice_dir.exists():
             shutil.rmtree(voice_dir)
 
     def voice_dir(self, voice_id: str) -> Path:
-        return self.root / voice_id
+        return self._voice_dir(voice_id)
+
+    def _voice_dir(self, voice_id: str) -> Path:
+        """Return a canonical child of ``root`` or reject it before filesystem I/O."""
+        if not is_canonical_voice_id(voice_id):
+            raise EngineError(ErrorCode.VOICE_CORRUPT, f"unsafe voice id: {voice_id!r}")
+        root = self.root.resolve()
+        candidate = self.root / voice_id
+        try:
+            candidate.resolve().relative_to(root)
+        except ValueError as exc:
+            raise EngineError(
+                ErrorCode.VOICE_CORRUPT, "voice path escapes the voice library"
+            ) from exc
+        return candidate

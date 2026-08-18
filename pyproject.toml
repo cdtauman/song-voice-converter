@@ -9,9 +9,8 @@ description = "SongVoice - local high-quality singing voice conversion for Windo
 requires-python = ">=3.11,<3.12"
 license = { text = "Proprietary" }
 
-# Phase 1 keeps runtime dependencies deliberately minimal.
-# The heavy AI stack (torch, separation, RVC) is resolved by the Compatibility
-# Spike and pinned in constraints.txt -- it is NOT declared here yet.
+# Phase 1 keeps the default runtime dependencies deliberately minimal.  The
+# heavy stacks are opt-in; RVC's generated lock is rvc-requirements.lock.
 dependencies = [
     "numpy>=1.26",
     "platformdirs>=4.0",
@@ -29,6 +28,13 @@ dev = [
 # Not part of the locked runtime matrix; the CLI degrades gracefully without it.
 plot = [
     "matplotlib>=3.7",
+]
+# RVC inference is intentionally opt-in.  Install this extra together with the
+# generated constraints.txt so it uses the Phase-1-proven torch matrix.
+rvc = [
+    "torch",
+    "transformers",
+    "faiss-cpu",
 ]
 
 [project.scripts]

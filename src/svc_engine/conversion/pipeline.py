@@ -158,8 +158,8 @@ class ConversionPipeline:
 
         if on_progress is not None:
             on_progress(0.05, _MSG_CONVERT)
-        backend.load(voice, device)
         try:
+            backend.load(voice, device)
             converted = convert_in_chunks(
                 vocals, f0, backend, params,
                 on_progress=(
@@ -229,8 +229,10 @@ class ConversionPipeline:
         if on_progress is not None:
             on_progress(0.15, _MSG_ANALYZE)
         t = time.perf_counter()
-        f0 = f0_extractor.extract(vocals, device, 0.01)
-        f0_extractor.unload()
+        try:
+            f0 = f0_extractor.extract(vocals, device, 0.01)
+        finally:
+            f0_extractor.unload()
         timings["analyze"] = time.perf_counter() - t
 
         recommended = _params_from_manifest(entry.manifest.recommended)

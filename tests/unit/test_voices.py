@@ -148,6 +148,15 @@ def test_import_rejects_archive_without_model(tmp_path: Path) -> None:
     assert lib.list() == []  # nothing half-written
 
 
+def test_import_rejects_unsupported_onnx_model(tmp_path: Path) -> None:
+    lib = VoiceLibrary(_paths(tmp_path))
+    archive = _make_zip(tmp_path, model=None, index=None, extra={"model.onnx": b"onnx"})
+    with pytest.raises(EngineError) as exc:
+        import_voice_from_zip(archive, "Onnx", consent_confirmed=True, library=lib)
+    assert exc.value.code is ErrorCode.VOICE_CORRUPT
+    assert lib.list() == []
+
+
 def test_import_rejects_non_zip(tmp_path: Path) -> None:
     lib = VoiceLibrary(_paths(tmp_path))
     bogus = tmp_path / "not.zip"
@@ -265,6 +274,22 @@ def test_failed_overwrite_restores_existing_voice(
     assert not list(lib.root.glob(".dup.import-*"))
 
 
+def test_import_recovers_backup_left_by_crash_before_replacement(tmp_path: Path) -> None:
+    lib = VoiceLibrary(_paths(tmp_path))
+    original = b"PK\x03\x04" + b"old" * 20
+    first = _make_zip(tmp_path, model=original, index=None, name="first.zip")
+    import_voice_from_zip(first, "Dup", consent_confirmed=True, library=lib, voice_id="dup")
+    voice_dir = lib.voice_dir("dup")
+    backup = voice_dir.with_name(".dup.previous")
+    voice_dir.replace(backup)  # crash between the two renames
+
+    with pytest.raises(EngineError):  # recovered voice still refuses an accidental overwrite
+        import_voice_from_zip(first, "Dup", consent_confirmed=True, library=lib, voice_id="dup")
+
+    assert lib.get("dup").model_path.read_bytes() == original
+    assert not backup.exists()
+
+
 # --- library --------------------------------------------------------------- #
 
 def test_library_lists_and_removes(tmp_path: Path) -> None:
@@ -296,3 +321,49 @@ def test_library_get_unknown_raises(tmp_path: Path) -> None:
     lib = VoiceLibrary(_paths(tmp_path))
     with pytest.raises(KeyError):
         lib.get("nope")
+
+
+def test_library_rejects_path_traversal_without_touching_outside_root(tmp_path: Path) -> None:
+    lib = VoiceLibrary(_paths(tmp_path))
+    victim = tmp_path / "victim"
+    victim.mkdir()
+    marker = victim / "keep.txt"
+    marker.write_text("do not delete", encoding="utf-8")
+
+    for unsafe in ("../victim", "..\\victim", ".", "", "A"):
+        assert unsafe not in lib
+        with pytest.raises(EngineError):
+            lib.voice_dir(unsafe)
+        with pytest.raises(EngineError):
+            lib.get(unsafe)
+        with pytest.raises(EngineError):
+            lib.remove(unsafe)
+
+    assert marker.read_text(encoding="utf-8") == "do not delete"
+
+
+def test_library_ignores_and_rejects_manifest_with_mismatched_id(tmp_path: Path) -> None:
+    lib = VoiceLibrary(_paths(tmp_path))
+    folder = lib.voice_dir("folder")
+    folder.mkdir(parents=True)
+    VoiceManifest("other", "Other", VoiceSource.IMPORTED, consent_confirmed=True).save(folder)
+
+    assert lib.list() == []
+    with pytest.raises(EngineError) as exc:
+        lib.get("folder")
+    assert exc.value.code is ErrorCode.VOICE_CORRUPT
+
+
+def test_overwrite_discards_stale_backup_when_active_voice_exists(tmp_path: Path) -> None:
+    lib = VoiceLibrary(_paths(tmp_path))
+    archive = _make_zip(tmp_path, index=None)
+    import_voice_from_zip(archive, "Dup", consent_confirmed=True, library=lib, voice_id="dup")
+    backup = lib.voice_dir("dup").with_name(".dup.previous")
+    backup.mkdir()
+    (backup / "stale.txt").write_text("old", encoding="utf-8")
+
+    import_voice_from_zip(
+        archive, "Dup", consent_confirmed=True, library=lib, voice_id="dup", overwrite=True
+    )
+    assert "dup" in lib
+    assert not backup.exists()

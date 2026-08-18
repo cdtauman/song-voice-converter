@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from svc_engine.backends.base import AudioBuffer, DeviceHint, F0Curve
-from svc_engine.backends.conversion import ConversionBackend, ConversionParams
+from svc_engine.backends.conversion import ConversionBackend, ConversionParams, VoiceHandle
 from svc_engine.conversion.rvc import (
     BruteForceIndex,
     apply_up_key,
@@ -20,7 +20,7 @@ from svc_engine.conversion.rvc import (
     f0_to_coarse,
 )
 from svc_engine.conversion.rvc.backend import RVCv2Backend
-from svc_engine.conversion.rvc.model import _load_checkpoint
+from svc_engine.conversion.rvc.model import _checkpoint_parts, _load_checkpoint
 from svc_engine.errors import EngineError, ErrorCode
 
 # --- F0 quantisation ------------------------------------------------------- #
@@ -135,6 +135,29 @@ def test_unload_is_safe_when_nothing_loaded(tmp_path) -> None:  # type: ignore[n
     RVCv2Backend(models_dir=tmp_path).unload()  # must not raise
 
 
+def test_backend_load_cleans_accelerator_cache_after_partial_failure(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:  # type: ignore[no-untyped-def]
+    import svc_engine.conversion.rvc.hubert as hubert_module
+    import svc_engine.conversion.rvc.model as model_module
+
+    backend = RVCv2Backend(models_dir=tmp_path)
+    released: list[bool] = []
+    monkeypatch.setattr(backend, "_ensure_hubert", lambda: tmp_path)
+    monkeypatch.setattr(model_module, "load_rvc_model", lambda path, device: object())
+
+    def fail_hubert(path, device: str):  # type: ignore[no-untyped-def]
+        raise RuntimeError("HuBERT failed")
+
+    monkeypatch.setattr(hubert_module, "load_hubert", fail_hubert)
+    monkeypatch.setattr(backend, "_empty_cache", lambda: released.append(True))
+    with pytest.raises(RuntimeError, match="HuBERT failed"):
+        backend.load(VoiceHandle("v", tmp_path), DeviceHint())
+    assert released
+    assert backend._inferencer is None
+    assert backend._voice_id is None
+
+
 def test_load_hint_maps_to_torch_device() -> None:
     # DeviceHint -> torch device string is what the backend passes down.
     assert DeviceHint().torch_device == "cpu"
@@ -174,4 +197,31 @@ def test_checkpoint_loader_rejects_non_rvc_weights(tmp_path) -> None:  # type: i
 
     with pytest.raises(EngineError) as exc:
         _load_checkpoint(FakeTorch(), tmp_path / "not-rvc.pth")
+    assert exc.value.code is ErrorCode.MODEL_CORRUPT
+
+
+class _Embedding:
+    shape = (1, 256)
+
+
+def _valid_checkpoint() -> dict[str, object]:
+    return {
+        "config": [1, 2, 3, 4, 40000],
+        "weight": {"emb_g.weight": _Embedding()},
+        "version": "v2",
+        "f0": 1,
+    }
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("version", "v3"), ("f0", 2), ("weight", {})],
+)
+def test_checkpoint_parts_rejects_unknown_or_incomplete_rvc_metadata(
+    field: str, value: object
+) -> None:
+    checkpoint = _valid_checkpoint()
+    checkpoint[field] = value
+    with pytest.raises(EngineError) as exc:
+        _checkpoint_parts(checkpoint)  # type: ignore[arg-type]
     assert exc.value.code is ErrorCode.MODEL_CORRUPT

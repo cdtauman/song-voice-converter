@@ -32,6 +32,7 @@ __all__ = [
     "VoiceSource",
     "VoiceManifest",
     "slugify",
+    "is_canonical_voice_id",
 ]
 
 #: File names inside a voice folder. Fixed so every part of the app agrees.
@@ -221,3 +222,8 @@ def slugify(name: str, fallback: str = "voice") -> str:
     makes the same choice)."""
     slug = _SLUG_RE.sub("-", name.strip().lower()).strip("-")
     return slug or fallback
+
+
+def is_canonical_voice_id(value: object) -> bool:
+    """True only for the ASCII ids this package is allowed to put on disk."""
+    return isinstance(value, str) and re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value) is not None

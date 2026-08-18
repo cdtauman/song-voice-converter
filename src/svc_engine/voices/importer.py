@@ -41,7 +41,7 @@ from svc_engine.voices.manifest import (
 __all__ = ["ImportResult", "import_voice_from_zip"]
 
 #: How a file inside the archive is recognised, by suffix, and where it lands.
-_MODEL_SUFFIXES = {".pth", ".onnx"}
+_MODEL_SUFFIXES = {".pth"}
 _INDEX_SUFFIXES = {".index"}
 _SAMPLE_SUFFIXES = {".wav", ".mp3", ".flac", ".m4a", ".ogg"}
 _AVATAR_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
@@ -133,6 +133,7 @@ def import_voice_from_zip(
     library.root.mkdir(parents=True, exist_ok=True)
 
     vid = slugify(voice_id or display_name)
+    _recover_interrupted_activation(library.voice_dir(vid))
     if vid in library and not overwrite:
         raise EngineError(
             ErrorCode.VOICE_CORRUPT, f"a voice named '{vid}' already exists"
@@ -286,10 +287,12 @@ def _place(staged: dict[str, Path], voice_dir: Path) -> dict[str, Path]:
 
 def _activate_replacement(replacement: Path, voice_dir: Path) -> None:
     """Atomically activate a complete voice and restore its predecessor on error."""
+    _recover_interrupted_activation(voice_dir)
     backup = voice_dir.with_name(f".{voice_dir.name}.previous")
     if backup.exists():
-        # A previous successful activation may have been interrupted during
-        # cleanup.  It is never the active voice, so it is safe to discard.
+        # Both paths mean the preceding activation completed and only its
+        # post-activation cleanup was interrupted.  The active directory is
+        # authoritative; the backup is stale and may be discarded.
         shutil.rmtree(backup)
 
     had_previous = voice_dir.exists()
@@ -303,3 +306,10 @@ def _activate_replacement(replacement: Path, voice_dir: Path) -> None:
         raise
     if had_previous:
         shutil.rmtree(backup, ignore_errors=True)
+
+
+def _recover_interrupted_activation(voice_dir: Path) -> None:
+    """Restore the prior voice when a crash left only its activation backup."""
+    backup = voice_dir.with_name(f".{voice_dir.name}.previous")
+    if backup.exists() and not voice_dir.exists():
+        backup.replace(voice_dir)

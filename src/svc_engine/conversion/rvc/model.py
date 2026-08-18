@@ -45,36 +45,26 @@ def load_rvc_model(model_path: Path | str, device: str = "cpu") -> RvcModel:
     import torch  # noqa: PLC0415 -- heavy dep, imported on demand
 
     from svc_engine.conversion.rvc.infer_pack import models as rvc_models
-    from svc_engine.errors import EngineError, ErrorCode
-
     cpt = _load_checkpoint(torch, Path(model_path))
 
-    if not isinstance(cpt, dict) or "config" not in cpt or "weight" not in cpt:
-        raise EngineError(
-            ErrorCode.MODEL_CORRUPT, "file is not an RVC voice checkpoint"
-        )
-
-    config = list(cpt["config"])
-    target_sr = int(config[-1])
-    if_f0 = int(cpt.get("f0", 1))
-    version = str(cpt.get("version", "v1"))
+    config, target_sr, version, if_f0, n_spk, weights = _checkpoint_parts(cpt)
     # n_spk is authoritative from the embedding table, not the stored config.
-    n_spk = int(cpt["weight"]["emb_g.weight"].shape[0])
     config[-3] = n_spk
 
-    synthesizer = {
+    synthesizers = {
         ("v1", 1): rvc_models.SynthesizerTrnMs256NSFsid,
         ("v1", 0): rvc_models.SynthesizerTrnMs256NSFsid_nono,
         ("v2", 1): rvc_models.SynthesizerTrnMs768NSFsid,
         ("v2", 0): rvc_models.SynthesizerTrnMs768NSFsid_nono,
-    }.get((version, if_f0), rvc_models.SynthesizerTrnMs256NSFsid)
+    }
+    synthesizer = synthesizers[(version, if_f0)]
 
     net_g = synthesizer(*config, is_half=False)
     # The posterior encoder is only used in training; inference checkpoints omit
     # it, so drop it before a non-strict load to avoid a spurious mismatch.
     if hasattr(net_g, "enc_q"):
         del net_g.enc_q
-    net_g.load_state_dict(cpt["weight"], strict=False)
+    net_g.load_state_dict(weights, strict=False)
     net_g = net_g.eval().to(device).float()
 
     return RvcModel(
@@ -111,3 +101,41 @@ def _load_checkpoint(torch: Any, model_path: Path) -> dict[str, Any]:
     ):
         raise EngineError(ErrorCode.MODEL_CORRUPT, "file is not an RVC voice checkpoint")
     return cpt
+
+
+def _checkpoint_parts(cpt: dict[str, Any]) -> tuple[list[Any], int, str, int, int, dict]:
+    """Validate the RVC-specific shape before constructing a network."""
+    from svc_engine.errors import EngineError, ErrorCode
+
+    config = list(cpt["config"])
+    raw_sample_rate = config[-1]
+    raw_f0 = cpt.get("f0", 1)
+    version = cpt.get("version", "v1")
+    weights = cpt["weight"]
+
+    if (
+        type(raw_sample_rate) is not int
+        or raw_sample_rate <= 0
+        or type(raw_f0) is not int
+        or raw_f0 not in {0, 1}
+        or not isinstance(version, str)
+        or version not in {"v1", "v2"}
+        or not isinstance(weights, dict)
+    ):
+        raise EngineError(ErrorCode.MODEL_CORRUPT, "RVC checkpoint has invalid metadata")
+
+    embedding = weights.get("emb_g.weight")
+    if embedding is None:
+        raise EngineError(
+            ErrorCode.MODEL_CORRUPT, "RVC checkpoint is missing speaker embeddings"
+        )
+    try:
+        n_spk = int(embedding.shape[0])
+    except (AttributeError, IndexError, TypeError, ValueError) as exc:
+        raise EngineError(
+            ErrorCode.MODEL_CORRUPT, "RVC checkpoint is missing speaker embeddings"
+        ) from exc
+    if n_spk <= 0:
+        raise EngineError(ErrorCode.MODEL_CORRUPT, "RVC checkpoint has no speakers")
+
+    return config, int(raw_sample_rate), version, raw_f0, n_spk, weights

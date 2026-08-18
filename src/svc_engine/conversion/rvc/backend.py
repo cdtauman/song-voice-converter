@@ -96,26 +96,35 @@ class RVCv2Backend:
                 and self._device == target:
             return
         self.unload()
+        try:
+            from svc_engine.conversion.rvc.hubert import load_hubert
+            from svc_engine.conversion.rvc.infer import RvcInferencer
+            from svc_engine.conversion.rvc.model import load_rvc_model
 
-        from svc_engine.conversion.rvc.hubert import load_hubert
-        from svc_engine.conversion.rvc.infer import RvcInferencer
-        from svc_engine.conversion.rvc.model import load_rvc_model
+            hubert_dir = self._ensure_hubert()
+            model_path = voice.root / MODEL_FILE
+            model = load_rvc_model(model_path, device=target)
+            hubert = load_hubert(hubert_dir, device=target)
 
-        hubert_dir = self._ensure_hubert()
-        model_path = voice.root / MODEL_FILE
-        model = load_rvc_model(model_path, device=target)
-        hubert = load_hubert(hubert_dir, device=target)
+            index_vectors, index_search = self._load_index(voice)
 
-        index_vectors, index_search = self._load_index(voice)
-
-        self._inferencer = RvcInferencer(
-            model=model,
-            hubert=hubert,
-            index_vectors=index_vectors,
-            index_search=index_search,
-        )
-        self._voice_id = voice.voice_id
-        self._device = target
+            self._inferencer = RvcInferencer(
+                model=model,
+                hubert=hubert,
+                index_vectors=index_vectors,
+                index_search=index_search,
+            )
+            self._voice_id = voice.voice_id
+            self._device = target
+        except Exception:
+            # A model may already occupy accelerator memory even when HuBERT,
+            # the index, or inferencer construction fails.  No partial load is
+            # observable after this point and the allocator cache is released.
+            self._inferencer = None
+            self._voice_id = None
+            self._device = "cpu"
+            self._empty_cache()
+            raise
 
     def convert(
         self,

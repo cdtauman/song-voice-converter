@@ -61,6 +61,23 @@ class _FakeF0:
         pass
 
 
+class _FailingF0(_FakeF0):
+    def __init__(self) -> None:
+        self.unloaded = False
+
+    def extract(self, audio: AudioBuffer, device: DeviceHint, hop: float = 0.01) -> F0Curve:
+        raise RuntimeError("F0 failed")
+
+    def unload(self) -> None:
+        self.unloaded = True
+
+
+class _FailingLoadBackend(_FakeBackend):
+    def load(self, voice: VoiceHandle, device: DeviceHint) -> None:
+        self.loaded = True
+        raise RuntimeError("partial backend load failed")
+
+
 def _vocals(seconds: float = 2.0) -> AudioBuffer:
     n = int(seconds * SR)
     t = np.arange(n)
@@ -151,6 +168,19 @@ def test_render_cover_reports_progress_to_completion(tmp_path: Path) -> None:
     assert seen == sorted(seen)  # monotonic progress
 
 
+def test_render_cover_unloads_backend_when_load_fails(tmp_path: Path) -> None:
+    p = paths(override_root=tmp_path)
+    backend = _FailingLoadBackend()
+    pipe = ConversionPipeline(paths=p, conversion_backend=backend, shifter=_FakeShifter())
+
+    with pytest.raises(RuntimeError, match="partial backend load failed"):
+        pipe.render_cover(
+            _vocals(1.0), F0Curve(hz=np.full(100, 330.0), hop_seconds=0.01),
+            _instrumental(SR), _profile(), VoiceHandle("v", tmp_path), ConversionParams(),
+        )
+    assert backend.unloaded
+
+
 # --- run end to end (fakes for every heavy stage) -------------------------- #
 
 def _library_with_voice(tmp_path: Path):  # type: ignore[no-untyped-def]
@@ -223,3 +253,18 @@ def test_run_refuses_voice_without_profile(tmp_path: Path) -> None:
             separate=lambda song: (_vocals(1.0), {StemKind.INSTRUMENTAL: _instrumental(SR)}),
         )
     assert exc.value.code is ErrorCode.VOICE_CORRUPT
+
+
+def test_run_unloads_f0_extractor_when_extract_fails(tmp_path: Path) -> None:
+    p, lib = _library_with_voice(tmp_path)
+    extractor = _FailingF0()
+    pipe = ConversionPipeline(
+        paths=p, library=lib, conversion_backend=_FakeBackend(), shifter=_FakeShifter()
+    )
+    vocals = _vocals(1.0)
+    with pytest.raises(RuntimeError, match="F0 failed"):
+        pipe.run(
+            tmp_path / "song.mp3", "yossi", extractor, DeviceHint(),
+            separate=lambda song: (vocals, {StemKind.INSTRUMENTAL: _instrumental(SR)}),
+        )
+    assert extractor.unloaded

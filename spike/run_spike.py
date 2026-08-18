@@ -54,6 +54,8 @@ PIPELINE = [
     "python-stretch",
     "audio-separator[cpu]",
     "torchfcpe",
+    "transformers",
+    "faiss-cpu",
 ]
 
 PIPELINE_GPU = [
@@ -66,6 +68,8 @@ PIPELINE_GPU = [
     "python-stretch",
     "audio-separator[gpu]",
     "torchfcpe",
+    "transformers",
+    "faiss-cpu",
 ]
 
 
@@ -210,7 +214,7 @@ def build_candidate(c: Candidate, uv: str) -> Outcome:
             if name.lower() in {
                 "torch", "numpy", "scipy", "librosa", "soundfile", "soxr",
                 "pyloudnorm", "python-stretch", "audio-separator", "torchfcpe",
-                "onnxruntime", "onnxruntime-gpu",
+                "onnxruntime", "onnxruntime-gpu", "transformers", "faiss-cpu",
             }:
                 out.resolved[name] = ver
 
@@ -229,7 +233,7 @@ def build_candidate(c: Candidate, uv: str) -> Outcome:
         return out
 
     required = ("torch", "numpy", "soundfile", "librosa", "pyloudnorm",
-                "pitch_shift", "audio_separator", "ffmpeg")
+                "pitch_shift", "audio_separator", "transformers", "faiss", "ffmpeg")
     failed = [k for k in required if not out.smoke.get("probes", {}).get(k, {}).get("ok")]
     if failed:
         out.status = "fail"
