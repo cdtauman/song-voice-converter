@@ -19,13 +19,17 @@ import argparse
 import contextlib
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from svc_engine import __version__
-from svc_engine.config import paths
+from svc_engine.config import Paths, paths
 from svc_engine.diag import Status, render_json, render_text, run_all_checks
 from svc_engine.diag.report import overall_status
 from svc_engine.errors import EngineError
 from svc_engine.logging_setup import setup_logging
+
+if TYPE_CHECKING:
+    from svc_engine.separation import SeparationPipeline
 
 __all__ = ["main"]
 
@@ -341,13 +345,29 @@ def _cmd_pitch(args: argparse.Namespace) -> int:
     return _EXIT_OK
 
 
+def _conversion_separator(
+    app_paths: Paths,
+    *,
+    no_download: bool,
+    allow_private_models: bool = False,
+) -> SeparationPipeline:
+    """Build the production separator with non-redistributable models blocked."""
+    from svc_engine.separation import SeparationPipeline
+
+    return SeparationPipeline(
+        paths=app_paths,
+        allow_downloads=not no_download,
+        allow_private_models=allow_private_models,
+    )
+
+
 def _cmd_convert(args: argparse.Namespace) -> int:
     """The full pipeline: song + voice -> repaired and mastered cover."""
     from svc_engine.backends.separation import StemKind
     from svc_engine.conversion import ConversionPipeline
     from svc_engine.pitch import PlaybackStrategy, explain_decision
     from svc_engine.postfx import AmbienceStrategy, PostFxConfig
-    from svc_engine.separation import CleanupStep, QualityLevel, SeparationPipeline
+    from svc_engine.separation import CleanupStep, QualityLevel
 
     p = paths()
     p.ensure()
@@ -360,15 +380,23 @@ def _cmd_convert(args: argparse.Namespace) -> int:
             print(message)
             last = message
 
-    separator = SeparationPipeline(paths=p, allow_downloads=not args.no_download)
+    if args.allow_private_models:
+        print(
+            "⚠️ מצב פרטי/פיתוח: ייתכן שיורדו מודלי ניקוי שאינם מורשים להפצה."
+        )
+    separator = _conversion_separator(
+        p,
+        no_download=args.no_download,
+        allow_private_models=args.allow_private_models,
+    )
 
     def separate(song: Path):  # type: ignore[no-untyped-def]
         outcome = separator.run(
             song,
             level=QualityLevel(args.quality),
-            # The removed room layer is evidence for Phase 6 A/B/C. If the
-            # private-only model is unavailable, cleanup records the skip and
-            # postfx safely leaves ambience untouched.
+            # The removed room layer is evidence for Phase 6 A/B/C. Production
+            # blocks the private-only model before download; cleanup records the
+            # skip and postfx safely continues without an ambience layer.
             cleanup=(CleanupStep.DEREVERB,),
             on_progress=None if args.quiet else (lambda pr: show(pr.fraction, pr.message_he)),
             duration_seconds=args.seconds,
@@ -592,6 +620,11 @@ def build_parser() -> argparse.ArgumentParser:
     cv.add_argument(
         "--target-lufs", type=_lufs_value, default=-14.0,
         help="יעד עוצמה סופי ב-LUFS (ברירת מחדל: ‎-14)",
+    )
+    cv.add_argument(
+        "--allow-private-models",
+        action="store_true",
+        help="לאפשר מודלי ניקוי שאינם מורשים להפצה (שימוש פרטי/פיתוח בלבד)",
     )
     cv.add_argument(
         "--seconds", type=float, default=None, help="לעבד רק את X השניות הראשונות (לבדיקות)"

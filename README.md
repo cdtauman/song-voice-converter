@@ -13,6 +13,11 @@
 > עדיין ממתינה למודלי קול, לחמשת השירים המורשים ולהאזנה עיוורת — ראה
 > [phase-6.md](docs/phase-reports/phase-6.md). אין עדיין ממשק גרפי.
 
+במסלול `svc convert`, מודלים שאינם מורשים להפצה חסומים כברירת מחדל: המערכת לא
+מורידה ולא מפעילה את מודל ה-DeReverb מסוג GPL, ואם אין חלופה מתירנית היא ממשיכה
+בבטחה בלי שכבת ambience. הדגל `--allow-private-models` הוא opt-in מפורש לשימוש
+פרטי/פיתוחי בלבד ומציג אזהרה; הוא אינו תנאי שקט להפעלת אסטרטגיות B/C.
+
 ## מה כבר עובד
 
 ```bash
@@ -22,6 +27,7 @@ svc separate "song.mp3" --quality balanced --out ./out
 svc analyze "vocals.wav" --report report.json --plot report.png
 svc profile "voice_sample.wav" --name yossi --out yossi.json
 svc pitch "vocals.wav" --voice yossi.json --report pitch.json
+svc convert "song.mp3" --voice yossi             # חוסם מודלים פרטיים כברירת מחדל
 ```
 
 | שלב | מצב | דוח |
