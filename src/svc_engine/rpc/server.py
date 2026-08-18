@@ -48,6 +48,7 @@ class Server:
             "voices.remove": self._voices_remove,
             "covers.preview": self._covers_preview,
             "covers.run": self._covers_run,
+            "covers.resume": self._covers_resume,
         }
         self._request_id = ""
         self._event_sink: EventSink | None = None
@@ -75,10 +76,12 @@ class Server:
 
     def _jobs_recoverable(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         from svc_engine.jobs import RecoveryStore
+        from svc_engine.workflows import load_cover_request
 
         snapshots = RecoveryStore(self._paths.root / "jobs").discover()
-        return [
-            {
+        results = []
+        for item in snapshots:
+            payload: dict[str, Any] = {
                 "job_id": item.job_id,
                 "name": item.name,
                 "status": item.status.value,
@@ -88,8 +91,21 @@ class Server:
                 ),
                 "total_steps": len(item.steps),
             }
-            for item in snapshots
-        ]
+            try:
+                request = load_cover_request(self._paths, item.job_id)
+            except (OSError, ValueError, KeyError, TypeError):
+                request = None
+            if request is not None:
+                payload.update(
+                    {
+                        "kind": "cover",
+                        "source": request.get("song"),
+                        "voice_id": request.get("voice_id"),
+                        "preview": bool(request.get("preview")),
+                    }
+                )
+            results.append(payload)
+        return results
 
     def _jobs_history(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         from svc_engine.history import HistoryStore
@@ -210,6 +226,18 @@ class Server:
     def _covers_run(self, params: dict[str, Any]) -> dict[str, Any]:
         return self._run_cover(params, preview=False)
 
+    def _covers_resume(self, params: dict[str, Any]) -> dict[str, Any]:
+        from svc_engine.workflows import resume_cover
+
+        return resume_cover(
+            self._paths,
+            str(params["job_id"]),
+            on_progress=lambda fraction, message: self._emit(
+                "progress", {"fraction": fraction, "message_he": message}
+            ),
+            on_job=lambda job_id: self._emit("job", {"job_id": job_id}),
+        )
+
     def _run_cover(self, params: dict[str, Any], *, preview: bool) -> dict[str, Any]:
         from svc_engine.workflows import run_cover
 
@@ -224,6 +252,8 @@ class Server:
             on_progress=lambda fraction, message: self._emit(
                 "progress", {"fraction": fraction, "message_he": message}
             ),
+            on_job=lambda job_id: self._emit("job", {"job_id": job_id}),
+            job_id=str(params["job_id"]) if params.get("job_id") else None,
         )
 
     def _emit(self, event: str, data: dict[str, Any]) -> None:

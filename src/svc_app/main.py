@@ -131,6 +131,7 @@ class MainWindow(QMainWindow):
 
         self._navigate(0)
         self.library.refresh()
+        QTimer.singleShot(0, self._offer_recovery)
 
     def _navigate(self, index: int) -> None:
         if self._thread is not None and self._thread.isRunning() and index != 0:
@@ -203,6 +204,38 @@ class MainWindow(QMainWindow):
         self._cancelled = True
         self.client.cancel_current()
         self.wizard.cancelled()
+
+    def _offer_recovery(self) -> None:
+        recoverable = getattr(self.client, "recoverable_jobs", None)
+        if not callable(recoverable):
+            return
+        try:
+            jobs = [item for item in recoverable() if item.get("kind") == "cover"]
+        except Exception:
+            return
+        if not jobs:
+            return
+        job = jobs[0]
+        answer = QMessageBox.question(
+            self,
+            "נמצאה עבודה שלא הסתיימה",
+            "מצאנו קאבר שנעצר. להמשיך מהשלב האחרון שהושלם?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        source = str(job.get("source") or "")
+        voice_id = str(job.get("voice_id") or "")
+        if source:
+            self.wizard.drop_zone.set_file(source)
+        if voice_id:
+            self.wizard._voice_selected(voice_id)
+        preview = bool(job.get("preview"))
+        self.wizard.show_processing("preview" if preview else "full")
+        self._start_worker(
+            lambda event: self.client.resume_cover(str(job["job_id"]), on_event=event),
+            self.wizard.show_recommendation if preview else self.wizard.show_result,
+        )
 
     @Slot(str, str)
     def _show_error(self, code: str, fallback: str) -> None:

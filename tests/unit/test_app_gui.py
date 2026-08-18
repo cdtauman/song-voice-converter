@@ -9,7 +9,7 @@ from typing import Any
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 from svc_app.i18n import error_text  # noqa: E402
 from svc_app.main import MainWindow  # noqa: E402
@@ -111,3 +111,39 @@ def test_every_engine_error_has_hebrew_title_and_suggested_action() -> None:
         assert title.strip()
         assert action.strip()
         assert any("\u0590" <= character <= "\u05ff" for character in title + action)
+
+
+def test_opening_gui_offers_to_resume_recoverable_cover(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    class RecoverableClient(FakeClient):
+        def recoverable_jobs(self) -> list[dict[str, Any]]:
+            return [
+                {
+                    "job_id": "cover-recovery",
+                    "kind": "cover",
+                    "source": str(tmp_path / "שיר.wav"),
+                    "voice_id": "demo-voice",
+                    "preview": True,
+                }
+            ]
+
+    _app()
+    client = RecoverableClient()
+    window = MainWindow(client)  # type: ignore[arg-type]
+    started: list[Any] = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
+    )
+    monkeypatch.setattr(
+        window,
+        "_start_worker",
+        lambda operation, on_success: started.append((operation, on_success)),
+    )
+    try:
+        window._offer_recovery()
+        assert window.wizard.pages.currentIndex() == 3
+        assert window.wizard.progress_message.text() == "מכינים תצוגה מקדימה…"
+        assert len(started) == 1
+    finally:
+        window.close()

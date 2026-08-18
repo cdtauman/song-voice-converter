@@ -251,6 +251,14 @@ class EngineClient:
             )
         )
 
+    def resume_cover(
+        self,
+        job_id: str,
+        *,
+        on_event: EventCallback | None = None,
+    ) -> dict[str, Any]:
+        return dict(self.call("covers.resume", job_id=job_id, on_event=on_event))
+
     # -- context manager --------------------------------------------------- #
 
     def __enter__(self) -> EngineClient:

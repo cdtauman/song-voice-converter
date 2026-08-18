@@ -28,7 +28,7 @@
 | `svc_app/i18n/` | מיפוי כל `ErrorCode` לכותרת בעברית ולפעולה מוצעת |
 | `svc_app/engine_client.py` | תהליך מנוע נפרד, streaming events, שגיאות מובנות וביטול |
 | `svc_engine/rpc/` | Event לפני Response, פעולות קולות/הגדרות/Preview/קאבר |
-| `svc_engine/workflows/cover.py` | חוזה GUI דק לאותה שרשרת production של Phases 2–6 |
+| `svc_engine/workflows/cover.py` | גרף production שריד (durable) מעל שרשרת Phases 2–7 |
 | `tools/bench_gui.py` | שער חזותי שחזורי לעשרת מצבי הממשק + contact sheet |
 
 הפקת Preview מוגבלת ל־30 שניות ונכתבת ל־scratch של האפליקציה. הפקה מלאה שומרת
@@ -42,6 +42,11 @@ WAV ליד השיר בשם `*-SongVoice.wav` ומוסיפה מספר אם השם
 ה־GUI מפעיל `svc serve` ומדבר איתו ב־JSON שורה־אחר־שורה. בקשה ארוכה שולחת אפס או
 יותר אירועי `progress`, ואז Response סופי אחד. כל אירוע נושא request id, אחוז
 והודעה עברית. הקריאה מתבצעת ב־`QThread`; ה־event loop של החלון אינו נחסם.
+
+Preview וקאבר בנויים כגרף `separate` → `analyze` → `render` → `deliver`. תוצרי כל
+צעד הם קבצים שמפורסמים אטומית ל־`StepCache`; בקשת העבודה נשמרת תחת
+`jobs/requests/<job_id>.json`. אחרי hard-kill, `jobs.recoverable` מחזיר את העבודה
+ו־`covers.resume` משחזר את אותו גרף. פתיחת הממשק מציעה בעברית להמשיך מהשלב האחרון.
 
 לחיצה על “בטל עיבוד” קוראת `EngineClient.cancel_current`: stdin נסגר, לאחר 2.5
 שניות לכל היותר נעשה terminate ולאחר מכן kill. שער ה־hard-crash של Phase 7 הורץ
@@ -72,12 +77,13 @@ WAV ליד השיר בשם `*-SongVoice.wav` ומוסיפה מספר אם השם
 
 | אימות | תוצאה |
 |-------|-------|
-| `python -m pytest -q` | ✅ 525 נאספו · 519 עברו · 6 דולגו לפי תנאי חומרה קיימים |
-| בדיקות Phase 8 ממוקדות | ✅ 17/17 — GUI, RPC streaming, שגיאות ו־RTL |
+| `python -m pytest -q` | ✅ 527 נאספו · 521 עברו · 6 דולגו לפי תנאי חומרה קיימים |
+| בדיקות Phase 8 ממוקדות | ✅ 19/19 — GUI, recovery דרך RPC, streaming, שגיאות ו־RTL |
 | `python -m ruff check src tests tools/bench_gui.py` | ✅ עבר |
 | `python -m mypy src` | ✅ 114 קובצי מקור, 0 שגיאות |
 | `python tools/bench_gui.py` | ✅ 10/10 מסכים, `all_rtl=true` |
 | `python tools/bench_jobs.py` | ✅ 4/4 hard-crash, cache/recovery וניקוי; cancel <3s |
+| `tests/integration/test_cover_rpc_recovery.py` | ✅ RPC קאבר אמיתי יצר snapshot; אחרי hard-kill ההפרדה הגיעה מה־cache ו־scratch נוקה |
 | `python tools/check_model_catalogue.py` | ✅ 9 מודלים, 3 מותרים להפצה |
 | `python tools/audit_constraints_licenses.py` | ✅ 93 חבילות; 0 GPL/AGPL; Qt מסווגת LGPL דינמית |
 | `python -m pip check` | ✅ אין תלויות שבורות |
@@ -98,6 +104,7 @@ WAV ליד השיר בשם `*-SongVoice.wav` ומוסיפה מספר אם השם
 | מסלול מלא בממשק בלי טרמינל | ✅ קיים ומחובר לשרשרת production דרך RPC; בדיקת שמע אמיתית חסומה בסעיף 7 |
 | שגיאות בעברית עם פעולה מוצעת | ✅ כל 14 קודי `ErrorCode` מכוסים; אין stack trace ב־GUI |
 | ביטול מהממשק | ✅ גבול process מחובר; fallback קשיח נמדד ב־0.078 שניות |
+| המשך עבודת קאבר אחרי hard-kill | ✅ `covers.resume`; קודמים לא רצים שוב וה־GUI מציע המשך בפתיחה |
 | Preview | ✅ מסלול 30 שניות + נגן A/B מסונכרן; האזנה אמיתית חסומה בסעיף 7 |
 | RTL בכל מסך | ✅ 10/10 מצבים עברו שער אוטומטי ו־QA חזותי |
 | משתמש חדש מצליח בלי הסבר | ⚠️ ההרצה המונחית של האשף שלמה; מבחן עם אדם וחומר אמיתי דורש את סעיף 7 |
