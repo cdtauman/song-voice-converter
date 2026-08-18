@@ -28,6 +28,20 @@
 | מה | ריפו + commit | קובץ מקור | היעד אצלנו | רישיון |
 |----|----------------|-----------|-------------|--------|
 | ארכיטקטורת RMVPE + inference | [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) @ `81eed5e` | `infer/rmvpe.py` | `src/svc_engine/analysis/rmvpe_model.py` | **MIT** |
+| רשת ה-inference של RVC v2 (Phase 5) | [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) @ `81eed5e` | `infer/module/{commons,transforms,modules,attentions,models}.py` | `src/svc_engine/conversion/rvc/infer_pack/` | **MIT** |
+
+**למה הועתק ולא נצרך כתלות (RVC v2):** אין חבילת `pip` יציבה ל-inference של RVC;
+מחלקות הרשת (`SynthesizerTrnMs256/768NSFsid`, `GeneratorNSF`, `TextEncoder` וכו')
+חייבות להתאים בדיוק לשמות ולצורות שבהן אומנו קובצי ה-`.pth` של הקהילה, אחרת
+`load_state_dict` נכשל — בדיוק כמו RMVPE. **מה שהשתנה מהמקור:** ה-import-ים כוונו
+לחבילה שלנו, ומחלקות ה-Discriminator (אימון בלבד) הוסרו מ-`models.py`. הארכיטקטורה
+עצמה מילה-במילה. הקבצים נושאים `# ruff: noqa` ו-`# type: ignore` ומוחרגים מ-mypy
+(`pyproject.toml`) — קוד צד-שלישי נבדק במעלה הזרם; אצלנו הם עוברים `py_compile`
+ו-ruff. **הלוגיקה שלנו** (כימות F0, blend של ה-index, התאמת RMS, הטוען, המתאם)
+חיה מסביבם ב-`conversion/rvc/{f0,index,rms,model,hubert,infer,backend}.py` ונבדקת
+ביחידות. **מה שלא רץ כאן:** ה-inference הנוירוני עצמו — דורש torch+transformers+faiss
+(טרם ב-`constraints.txt`), משקולות HuBERT, ומודל קול אמיתי. ראה
+[phase-reports/phase-5.md](phase-reports/phase-5.md).
 
 **למה הועתק ולא נצרך כתלות:** ל-RMVPE אין חבילת `pip` עצמאית ויציבה; מחלקות הרשת
 (`E2E`, `DeepUnet`, `MelSpectrogram` וכו') חייבות להתאים בדיוק לשמות ולצורות
@@ -35,8 +49,10 @@
 ה-fp16, ענף ה-DirectML/ONNX, לכידת CUDA-graph, והתלות ב-`configs.config` —
 כולם קשרו את הקוד לאפליקציה המארחת. הארכיטקטורה עצמה הועתקה מילה-במילה.
 
-טענת "אף שורת קוד לא הועתקה" מ-Phase 2 כבר אינה נכונה החל מ-Phase 3: זו ההעתקה
-הראשונה, והיא היחידה עד כה. דרגה 4 נוספת צפויה ב-Phase 5 (RVC inference).
+טענת "אף שורת קוד לא הועתקה" מ-Phase 2 כבר אינה נכונה החל מ-Phase 3: RMVPE הייתה
+ההעתקה הראשונה. **Phase 5 הוסיף את השנייה** — רשת ה-inference של RVC v2 (השורה
+השנייה בטבלה למעלה). שתיהן דרגה 4, שתיהן מ-`81eed5e`, שתיהן מאותה סיבה: המשקולות
+נעולות לשמות המחלקות.
 
 ### 1.2 התאמות שנעשו מעל הספריות, ולמה
 
@@ -63,6 +79,7 @@
 |--------------|------|--------|--------|
 | `sep_melband_kim` | [KimberleyJSN/melbandroformer](https://huggingface.co/KimberleyJSN/melbandroformer) | **MIT** | ✅ כן |
 | `f0_rmvpe` | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | **MIT** | ✅ כן |
+| `content_hubert` | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) — `hubert_base.pt`, sha256 נעול (Phase 5) | **MIT** | ✅ כן |
 | `sep_melband_kim_ft2` | [pcunwa/Kim-Mel-Band-Roformer-FT](https://huggingface.co/pcunwa/Kim-Mel-Band-Roformer-FT) | אין הצהרה | ⚠️ פרטי בלבד |
 | `sep_bs_roformer_1297` | UVR model repo | אין הצהרה | ⚠️ פרטי בלבד |
 | `karaoke_aufr33_viperx` | UVR model repo | אין הצהרה | ⚠️ פרטי בלבד |
@@ -99,6 +116,6 @@
 | שלב | מה צפוי | דרגה צפויה בסולם |
 |------|----------|--------------------|
 | Phase 3 | ✅ **נעשה** — משקולות RMVPE (§2) + קוד RMVPE (§1.3) + `torchfcpe` (§1.1) | 1 + 4 |
-| Phase 5 | קוד ה-inference של RVC v2, ו-ContentVec/HuBERT | **4 — הכנסת תת-קבוצה.** מחייב נתיבי קבצים ו-commit מדויקים כאן |
+| Phase 5 | ✅ **נעשה** — רשת inference של RVC v2 (§1.3) + משקולות HuBERT (§2). התלויות `faiss-cpu`/`transformers` ננעלות ב-re-lock (ראה phase-5.md) | 4 + 1 |
 | Phase 9 | מנגנון האימון של Applio, מודל בסיס TITAN (Apache-2.0) | 3–4 |
 | Phase 10 | Seed-VC (GPL-3.0) | **סביבה מבודדת בלבד — לעולם לא בליבה** |

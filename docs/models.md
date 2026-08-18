@@ -107,8 +107,17 @@
 
 | רכיב | מקור | רישיון | בליבה? |
 |------|------|--------|--------|
-| קוד inference של RVC v2 | חילוץ מ-RVC-Project / Applio | MIT | ✅ |
+| קוד inference של RVC v2 | **מוטמע מ-RVC-Project @ `81eed5e`** — `src/svc_engine/conversion/rvc/infer_pack/` (Phase 5, ראה third-party §1.3) | MIT | ✅ |
+| `content_hubert` (`hubert_base.pt`) | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) — נכנס לקטלוג ב-Phase 5, sha256 נעול | **MIT** | ✅ |
 | `torchfcpe` | 0.0.4 | MIT | ✅ |
+| `faiss-cpu` | חיפוש ה-`.index` (blend של הגוון) | MIT | ⏳ **טרם ננעל ב-`constraints.txt`** — נכנס ב-re-lock של Phase 5 |
+| `transformers` | טעינת מקודד ה-HuBERT | Apache-2.0 | ⏳ **טרם ננעל ב-`constraints.txt`** — נכנס ב-re-lock של Phase 5 |
+
+> **סייג תלויות (Phase 5):** ה-Spike של Phase 1 אימת "conversion" כעומס אופרטורים
+> סינתטי (`conv1d+transformer+convtranspose`), **לא** את RVC האמיתי. `faiss-cpu`
+> ו-`transformers` — התלויות של inference אמיתי — עדיין אינן ב-`constraints.txt`.
+> נעילתן היא צעד ה-re-lock שרץ עם ה-Spike על מחשב הפיתוח (ראה
+> [phase-reports/phase-5.md](phase-reports/phase-5.md)).
 
 ### 2.4 🆕 הזזת גובה — החלטה מעודכנת
 

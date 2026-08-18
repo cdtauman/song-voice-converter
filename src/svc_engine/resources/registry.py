@@ -41,6 +41,7 @@ class ModelKind(StrEnum):
     DENOISE = "denoise"
     STEMS = "stems"
     F0 = "f0"
+    HUBERT = "hubert"
 
 
 @dataclass(frozen=True)

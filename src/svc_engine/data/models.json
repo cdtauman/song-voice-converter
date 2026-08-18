@@ -263,6 +263,32 @@
           ]
         }
       ]
+    },
+
+    "content_hubert": {
+      "kind": "hubert",
+      "backend": "rvc_v2",
+      "engine_model": "hubert_base.pt",
+      "display_name_he": "מקודד תוכן הדיבור (HuBERT/ContentVec)",
+      "stems": [],
+      "sdr": null,
+      "license": {
+        "spdx": "MIT",
+        "verified_at": "2026-08-18",
+        "source": "huggingface.co/api/models/lj1995/VoiceConversionWebUI -> cardData.license == 'mit'; same repo as rmvpe.pt. Reachability + size checked 2026-08-18 (HTTP 200, 189507909 bytes).",
+        "note_he": "רישיון MIT מאומת — מותר להפצה. מקודד התוכן שההמרה מותנית בו, משותף לכל הקולות."
+      },
+      "note_he": "מקודד HuBERT שמפריד את תוכן השירה מהגוון של הזמר המקורי (Phase 5). ה-sha256 ננעל מול הקובץ שהורד (189.5MB). פורמט הטעינה הסופי (fairseq מול Transformers) ננעל יחד עם מטריצת התלויות של ההמרה במחשב הפיתוח — ראה docs/phase-reports/phase-5.md.",
+      "files": [
+        {
+          "name": "content_hubert/hubert_base.pt",
+          "size_bytes": 189507909,
+          "sha256": "f54b40fd2802423a5643779c4861af1e9ee9c1564dc9d32f54f20b5ffba7db96",
+          "urls": [
+            "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt"
+          ]
+        }
+      ]
     }
   }
 }

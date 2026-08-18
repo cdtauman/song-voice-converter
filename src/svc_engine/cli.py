@@ -7,6 +7,8 @@
     svc analyze          F0 / range / key / segments / preview of a vocal
     svc profile          compute a target voice's range profile
     svc pitch            decide the shift to seat a song in a target voice
+    svc voices           list / import / remove target voices
+    svc convert          full pipeline: song + voice -> cover
     svc serve            run the RPC engine on stdin/stdout
     svc version
 """
@@ -22,6 +24,7 @@ from svc_engine import __version__
 from svc_engine.config import paths
 from svc_engine.diag import Status, render_json, render_text, run_all_checks
 from svc_engine.diag.report import overall_status
+from svc_engine.errors import EngineError
 from svc_engine.logging_setup import setup_logging
 
 __all__ = ["main"]
@@ -328,6 +331,108 @@ def _cmd_pitch(args: argparse.Namespace) -> int:
     return _EXIT_OK
 
 
+def _cmd_convert(args: argparse.Namespace) -> int:
+    """The full pipeline: song + voice -> cover. Phases 2-5 end to end."""
+    from svc_engine.backends.separation import StemKind
+    from svc_engine.conversion import ConversionPipeline
+    from svc_engine.pitch import PlaybackStrategy, explain_decision
+    from svc_engine.separation import QualityLevel, SeparationPipeline
+
+    p = paths()
+    p.ensure()
+
+    last = ""
+
+    def show(fraction: float, message: str) -> None:
+        nonlocal last
+        if message != last:
+            print(message)
+            last = message
+
+    separator = SeparationPipeline(paths=p, allow_downloads=not args.no_download)
+
+    def separate(song: Path):  # type: ignore[no-untyped-def]
+        outcome = separator.run(
+            song,
+            level=QualityLevel(args.quality),
+            on_progress=None if args.quiet else (lambda pr: show(pr.fraction, pr.message_he)),
+            duration_seconds=args.seconds,
+        )
+        return outcome.stems[StemKind.VOCALS], outcome.stems
+
+    extractor, device = _f0_extractor_and_device(args.method, args.no_download)
+    pipeline = ConversionPipeline(paths=p)
+
+    outcome = pipeline.run(
+        args.input,
+        args.voice,
+        f0_extractor=extractor,
+        device=device,
+        separate=separate,
+        strategy=PlaybackStrategy(args.playback),
+        on_progress=None if args.quiet else show,
+    )
+    out_path = pipeline.write(outcome, args.out)
+
+    print()
+    print(explain_decision(outcome.decision))
+    print()
+    print(outcome.summary_he())
+    print(f"  🎵 {out_path}")
+    for step, seconds in outcome.timings.items():
+        print(f"  ⏱ {step:12s} {seconds:6.1f}s")
+    return _EXIT_OK
+
+
+def _cmd_voices(args: argparse.Namespace) -> int:
+    """List the voice library, or import a voice from a zip."""
+    from svc_engine.voices import VoiceLibrary, import_voice_from_zip
+
+    p = paths()
+    p.ensure()
+    library = VoiceLibrary(p)
+
+    if args.import_zip:
+        result = import_voice_from_zip(
+            args.import_zip,
+            display_name=args.name or Path(args.import_zip).stem,
+            consent_confirmed=args.consent,
+            consent_note=args.consent_note or "",
+            voice_id=args.id,
+            library=library,
+            overwrite=args.overwrite,
+        )
+        print(result.summary_he())
+        return _EXIT_OK
+
+    if args.remove:
+        library.remove(args.remove)
+        print(f"הוסר: {args.remove}")
+        return _EXIT_OK
+
+    entries = library.list()
+    if not entries:
+        print(
+            "אין קולות בספרייה. הוסף קול עם: "
+            "svc voices --import <voice.zip> --name <שם> --consent"
+        )
+        return _EXIT_OK
+    for entry in entries:
+        m = entry.manifest
+        mark = "✅" if m.usable else "⚠️"
+        extras = []
+        if entry.index_path is not None:
+            extras.append("index")
+        if entry.profile() is not None:
+            extras.append("פרופיל")
+        tail = f" · {', '.join(extras)}" if extras else ""
+        print(
+            f"{mark} {m.voice_id:20s} {m.display_name:20s} "
+            f"{m.rvc_version}  {m.health.note_he}{tail}"
+        )
+    return _EXIT_OK
+
+
 def _cmd_serve(_: argparse.Namespace) -> int:
     from svc_engine.rpc import serve_stdio
 
@@ -434,6 +539,42 @@ def build_parser() -> argparse.ArgumentParser:
     pt.add_argument("-q", "--quiet", action="store_true", help="בלי הודעות התקדמות")
     pt.set_defaults(func=_cmd_pitch)
 
+    cv = sub.add_parser("convert", help="המרת שיר לקול היעד — הצינור המלא")
+    cv.add_argument("input", help="קובץ השיר")
+    cv.add_argument("--voice", required=True, metavar="ID", help="מזהה הקול בספרייה")
+    cv.add_argument("--out", default="cover.wav", help="קובץ הפלט")
+    cv.add_argument(
+        "--quality", choices=["fast", "balanced", "max"], default="balanced",
+        help="רמת איכות ההפרדה",
+    )
+    cv.add_argument(
+        "--method", choices=["fcpe", "rmvpe"], default="rmvpe",
+        help="שיטת זיהוי הגובה להמרה (rmvpe מדויק, ברירת מחדל)",
+    )
+    cv.add_argument(
+        "--playback", choices=["A", "B"], default="A",
+        help="אסטרטגיית פלייבק: A (הזזת המיקס) או B (פיצול, בלי לגעת בתופים)",
+    )
+    cv.add_argument(
+        "--seconds", type=float, default=None, help="לעבד רק את X השניות הראשונות (לבדיקות)"
+    )
+    cv.add_argument("--no-download", action="store_true", help="לא להוריד מודלים חסרים")
+    cv.add_argument("-q", "--quiet", action="store_true", help="בלי הודעות התקדמות")
+    cv.set_defaults(func=_cmd_convert)
+
+    vo = sub.add_parser("voices", help="ספריית הקולות: רשימה, ייבוא, הסרה")
+    vo.add_argument("--import", dest="import_zip", metavar="ZIP", help="לייבא קול מקובץ zip")
+    vo.add_argument("--name", help="שם התצוגה של הקול")
+    vo.add_argument("--id", help="מזהה הקול (ברירת מחדל: נגזר מהשם)")
+    vo.add_argument(
+        "--consent", action="store_true",
+        help="אישור מפורש שיש לך הרשאה להשתמש בקול הזה (חובה לייבוא)",
+    )
+    vo.add_argument("--consent-note", help="הערת הרשאה (למשל 'הקלטות שלי')")
+    vo.add_argument("--overwrite", action="store_true", help="לדרוס קול קיים באותו מזהה")
+    vo.add_argument("--remove", metavar="ID", help="להסיר קול מהספרייה")
+    vo.set_defaults(func=_cmd_voices)
+
     s = sub.add_parser("serve", help="הרצת המנוע במצב RPC")
     s.set_defaults(func=_cmd_serve)
 
@@ -467,7 +608,16 @@ def main(argv: list[str] | None = None) -> int:
     p.ensure()
     # `serve` speaks JSON on stdout -- logs must not pollute it.
     setup_logging(p.logs, console=(args.command != "serve"))
-    return int(args.func(args))
+    try:
+        return int(args.func(args))
+    except EngineError as exc:
+        # architecture.md section 8: the user sees a Hebrew what+action line,
+        # never a stack trace. The detail is in the log for us.
+        import logging
+
+        logging.getLogger(__name__).error("%s: %s", exc.code.value, exc.detail)
+        print(f"\n❌ {exc.user_message.render()}", file=sys.stderr)
+        return _EXIT_FAIL
 
 
 if __name__ == "__main__":

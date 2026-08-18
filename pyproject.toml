@@ -58,6 +58,15 @@ warn_redundant_casts = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
 
+# Vendored RVC network (subset insertion, degree 4 -- docs/reuse-policy.md). It
+# is a faithful, near-verbatim port from RVC-Project (MIT) whose module names and
+# shapes must match the pretrained weights; re-annotating it to our style would
+# fork it from upstream and invite transcription bugs. Checked upstream and by
+# ruff/py_compile here; excluded from our strict typing like any vendor/ tree.
+[[tool.mypy.overrides]]
+module = "svc_engine.conversion.rvc.infer_pack.*"
+ignore_errors = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
