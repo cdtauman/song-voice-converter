@@ -139,21 +139,36 @@ def test_backend_load_cleans_accelerator_cache_after_partial_failure(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:  # type: ignore[no-untyped-def]
     import svc_engine.conversion.rvc.hubert as hubert_module
+    import svc_engine.conversion.rvc.infer as infer_module
     import svc_engine.conversion.rvc.model as model_module
 
     backend = RVCv2Backend(models_dir=tmp_path)
-    released: list[bool] = []
+    events: list[str] = []
+
+    class TrackedObject:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def __del__(self) -> None:
+            events.append(f"{self.name}-released")
+
     monkeypatch.setattr(backend, "_ensure_hubert", lambda: tmp_path)
-    monkeypatch.setattr(model_module, "load_rvc_model", lambda path, device: object())
+    monkeypatch.setattr(
+        model_module, "load_rvc_model", lambda path, device: TrackedObject("model")
+    )
 
-    def fail_hubert(path, device: str):  # type: ignore[no-untyped-def]
-        raise RuntimeError("HuBERT failed")
+    monkeypatch.setattr(
+        hubert_module, "load_hubert", lambda path, device: TrackedObject("hubert")
+    )
 
-    monkeypatch.setattr(hubert_module, "load_hubert", fail_hubert)
-    monkeypatch.setattr(backend, "_empty_cache", lambda: released.append(True))
-    with pytest.raises(RuntimeError, match="HuBERT failed"):
+    def fail_inferencer(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("inferencer construction failed")
+
+    monkeypatch.setattr(infer_module, "RvcInferencer", fail_inferencer)
+    monkeypatch.setattr(backend, "_empty_cache", lambda: events.append("cache-emptied"))
+    with pytest.raises(RuntimeError, match="inferencer construction failed"):
         backend.load(VoiceHandle("v", tmp_path), DeviceHint())
-    assert released
+    assert events == ["model-released", "hubert-released", "cache-emptied"]
     assert backend._inferencer is None
     assert backend._voice_id is None
 

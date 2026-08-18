@@ -326,6 +326,20 @@ def write_constraints(out: Outcome, dest: Path) -> None:
     dest.write_text("\n".join(header + out.freeze) + "\n", encoding="utf-8")
 
 
+def write_pipeline_lock(uv: str, candidate: Candidate, constraints: Path, dest: Path) -> None:
+    """Generate the installable Phase 2-5 lock from the Spike winner's matrix."""
+    cmd = [
+        uv, "pip", "compile", "--python-version", candidate.python,
+        "--index-strategy", "unsafe-best-match", "--extra", "rvc",
+        str(constraints), str(ROOT / "pyproject.toml"), "-o", str(dest),
+    ]
+    if candidate.torch_index:
+        cmd += ["--index-url", candidate.torch_index, "--extra-index-url", "https://pypi.org/simple"]
+    result = run(cmd, timeout=1800)
+    if result.returncode != 0:
+        raise RuntimeError(f"RVC lock generation failed: {result.stderr.strip()[:600]}")
+
+
 def write_matrix(
     outcomes: list[Outcome],
     dest: Path,
@@ -488,8 +502,12 @@ def main(argv: list[str] | None = None) -> int:
     winner = passed[0] if passed else None
 
     if winner:
-        write_constraints(winner, ROOT / "constraints.txt")
+        constraints_path = ROOT / "constraints.txt"
+        write_constraints(winner, constraints_path)
+        write_pipeline_lock(uv, next(c for c in CANDIDATES if c.id == winner.candidate),
+                            constraints_path, ROOT / "rvc-requirements.lock")
         print(f"\nconstraints.txt written from candidate '{winner.candidate}'")
+        print("rvc-requirements.lock written from the same pipeline matrix")
     else:
         print("\nNo candidate passed. constraints.txt not written.")
 

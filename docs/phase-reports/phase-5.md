@@ -138,8 +138,11 @@ README קובע: קול נכנס למערכת **אך ורק** אם המשתמש 
 ה-Spike של Phase 1 אימת "conversion" כעומס אופרטורים סינתטי
 (`conv1d+transformer+convtranspose`), **לא** את RVC האמיתי. Phase 5 מוסיף extra מפורש
 `.[rvc]` ואת `rvc-requirements.lock`, שנוצר אוטומטית (לא נערך ידנית) עם `uv pip compile`
-תחת `constraints.txt` של XPU. הוא נועל `torch==2.13.0+xpu`,
-`transformers==5.15.0` ו-`faiss-cpu==1.15.0`.
+מ־`constraints.txt` **כקלט דרישות מלא**, לא רק כ־constraints, ומ־`pyproject.toml`.
+לכן ה-lock כולל את כל מטריצת Phase 2–5: `audio-separator`, `torchfcpe`, `librosa`,
+`python-stretch`, `soundfile`, `scipy`, `soxr`, `pyloudnorm`, וכן
+`torch==2.13.0+xpu`, `transformers==5.15.0` ו-`faiss-cpu==1.15.0`. ה־Spike יוצר
+מעתה את שני הקבצים מאותו winner, ולכן לא ניתן לעדכן את המטריצה בלי לעדכן גם את ה-lock.
 
 התקנה נקייה משתמשת ב:
 
@@ -149,10 +152,11 @@ uv pip sync --python .venv\\Scripts\\python.exe \
   --extra-index-url https://pypi.org/simple rvc-requirements.lock
 ```
 
-בסביבת Python 3.11 המבודדת הורצו `uv pip check` (105 חבילות, נקי) ו-import smoke
-של `torch`, `transformers` ו-`faiss`; הגרסאות שהודפסו היו בהתאמה
-`2.13.0+xpu`, `5.15.0`, `1.15.0`. ה-Spike וסקריפט ה-smoke כוללים מעתה את שתי
-התלויות כחובה, כך שהרצה מלאה עתידית תבחן אותן יחד עם שאר המטריצה.
+לאחר `uv pip sync` של lock זה בסביבת Python 3.11/XPU המבודדת, `uv pip check`
+עבר על 108 חבילות. import smoke עבר עבור `audio_separator`, `torchfcpe`, `librosa`,
+`python_stretch`, `soundfile`, `scipy`, `soxr`, `pyloudnorm`, `torch`,
+`transformers` ו-`faiss`. ה-Spike וסקריפט ה-smoke כוללים מעתה את שתי התלויות
+כחובה, כך שהרצה מלאה עתידית תבחן אותן יחד עם שאר המטריצה.
 
 ### ב. חומרי בדיקה + מודלי קול אמיתיים (DoD #1)
 הרצת ההמרה בפועל דורשת: (1) משקולות HuBERT (בקטלוג, MIT, נעולות — יורדות אוטומטית);

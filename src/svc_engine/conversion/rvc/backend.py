@@ -15,8 +15,10 @@ docs/phase-reports/phase-5.md.
 
 from __future__ import annotations
 
+import gc
 import importlib.util
 import logging
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -96,6 +98,10 @@ class RVCv2Backend:
                 and self._device == target:
             return
         self.unload()
+        model: Any | None = None
+        hubert: Any | None = None
+        index_vectors: np.ndarray | None = None
+        index_search: Any = None
         try:
             from svc_engine.conversion.rvc.hubert import load_hubert
             from svc_engine.conversion.rvc.infer import RvcInferencer
@@ -116,13 +122,22 @@ class RVCv2Backend:
             )
             self._voice_id = voice.voice_id
             self._device = target
-        except Exception:
+        except Exception as exc:
             # A model may already occupy accelerator memory even when HuBERT,
             # the index, or inferencer construction fails.  No partial load is
             # observable after this point and the allocator cache is released.
             self._inferencer = None
             self._voice_id = None
             self._device = "cpu"
+            # Clear the frame's local tensor references *before* returning
+            # memory to the allocator.  Re-raising retains this frame in the
+            # traceback, so merely waiting for it to leave scope is too late.
+            model = None
+            hubert = None
+            index_vectors = None
+            index_search = None
+            traceback.clear_frames(exc.__traceback__)
+            gc.collect()
             self._empty_cache()
             raise
 
