@@ -26,7 +26,13 @@ from svc_engine.compute import (
     looks_like_intel_gpu,
 )
 
-__all__ = ["Status", "CheckResult", "run_all_checks", "REQUIRED_FFMPEG_FILTERS"]
+__all__ = [
+    "Status",
+    "CheckResult",
+    "run_all_checks",
+    "REQUIRED_FFMPEG_FILTERS",
+    "ffmpeg_build_is_gpl",
+]
 
 #: ffmpeg filters the mixing stage depends on (decision: ffmpeg instead of custom DSP).
 REQUIRED_FFMPEG_FILTERS = ("loudnorm", "alimiter", "acompressor", "aresample")
@@ -106,6 +112,11 @@ def _run(cmd: list[str], timeout: int = 20) -> tuple[int, str]:
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except (OSError, subprocess.SubprocessError):
         return -1, ""
+
+
+def ffmpeg_build_is_gpl(version_text: str) -> bool:
+    """Whether this particular binary enabled GPL-only build components."""
+    return "--enable-gpl" in version_text.lower()
 
 
 def _has_nvidia_driver() -> bool:
@@ -391,6 +402,14 @@ def check_ffmpeg() -> CheckResult:
             "ffmpeg", label, Status.FAIL,
             "לגרסת ffmpeg המותקנת חסרים רכיבי מיקס: " + ", ".join(missing),
             detail=exe,
+        )
+    if ffmpeg_build_is_gpl(out):
+        return CheckResult(
+            "ffmpeg",
+            label,
+            Status.WARN,
+            "זמין, אבל גרסת הפיתוח כוללת רכיבי GPL. באריזה נדרשת גרסת LGPL.",
+            detail=f"{version} | {exe}",
         )
     return CheckResult(
         "ffmpeg", label, Status.OK,

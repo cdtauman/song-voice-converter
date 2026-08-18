@@ -34,6 +34,16 @@ _EXIT_WARN = 0  # warnings must not fail scripts or CI
 _EXIT_FAIL = 2
 
 
+def _lufs_value(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("LUFS חייב להיות מספר") from exc
+    if not -70.0 <= parsed <= -5.0:
+        raise argparse.ArgumentTypeError("יעד LUFS חייב להיות בין ‎-70 ל-‎-5")
+    return parsed
+
+
 def _cmd_doctor(args: argparse.Namespace) -> int:
     p = paths()
     p.ensure()
@@ -332,11 +342,12 @@ def _cmd_pitch(args: argparse.Namespace) -> int:
 
 
 def _cmd_convert(args: argparse.Namespace) -> int:
-    """The full pipeline: song + voice -> cover. Phases 2-5 end to end."""
+    """The full pipeline: song + voice -> repaired and mastered cover."""
     from svc_engine.backends.separation import StemKind
     from svc_engine.conversion import ConversionPipeline
     from svc_engine.pitch import PlaybackStrategy, explain_decision
-    from svc_engine.separation import QualityLevel, SeparationPipeline
+    from svc_engine.postfx import AmbienceStrategy, PostFxConfig
+    from svc_engine.separation import CleanupStep, QualityLevel, SeparationPipeline
 
     p = paths()
     p.ensure()
@@ -355,13 +366,23 @@ def _cmd_convert(args: argparse.Namespace) -> int:
         outcome = separator.run(
             song,
             level=QualityLevel(args.quality),
+            # The removed room layer is evidence for Phase 6 A/B/C. If the
+            # private-only model is unavailable, cleanup records the skip and
+            # postfx safely leaves ambience untouched.
+            cleanup=(CleanupStep.DEREVERB,),
             on_progress=None if args.quiet else (lambda pr: show(pr.fraction, pr.message_he)),
             duration_seconds=args.seconds,
         )
         return outcome.stems[StemKind.VOCALS], outcome.stems
 
     extractor, device = _f0_extractor_and_device(args.method, args.no_download)
-    pipeline = ConversionPipeline(paths=p)
+    pipeline = ConversionPipeline(
+        paths=p,
+        postfx_config=PostFxConfig(
+            ambience_strategy=AmbienceStrategy(args.ambience),
+            target_lufs=args.target_lufs,
+        ),
+    )
 
     outcome = pipeline.run(
         args.input,
@@ -379,6 +400,15 @@ def _cmd_convert(args: argparse.Namespace) -> int:
     print()
     print(outcome.summary_he())
     print(f"  🎵 {out_path}")
+    if outcome.postfx is not None:
+        report = outcome.postfx
+        print(
+            f"  🔊 {report.mix.integrated_lufs:.2f} LUFS · "
+            f"שיא {report.mix.peak_dbfs:.2f} dBFS · "
+            f"ללא clipping: {'כן' if not report.mix.clipped else 'לא'}"
+        )
+        if not report.ambience.measurement.available:
+            print("  ℹ️ לא נמצאה שכבת חדר נפרדת; לא נוסף הדהוד משוער.")
     for step, seconds in outcome.timings.items():
         print(f"  ⏱ {step:12s} {seconds:6.1f}s")
     return _EXIT_OK
@@ -554,6 +584,14 @@ def build_parser() -> argparse.ArgumentParser:
     cv.add_argument(
         "--playback", choices=["A", "B"], default="A",
         help="אסטרטגיית פלייבק: A (הזזת המיקס) או B (פיצול, בלי לגעת בתופים)",
+    )
+    cv.add_argument(
+        "--ambience", choices=["A", "B", "C"], default="B",
+        help="מרחב אקוסטי: A מקורי, B שחזור חדש (זמני), C שילוב",
+    )
+    cv.add_argument(
+        "--target-lufs", type=_lufs_value, default=-14.0,
+        help="יעד עוצמה סופי ב-LUFS (ברירת מחדל: ‎-14)",
     )
     cv.add_argument(
         "--seconds", type=float, default=None, help="לעבד רק את X השניות הראשונות (לבדיקות)"

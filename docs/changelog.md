@@ -2,6 +2,22 @@
 
 ---
 
+## 19.8.2026 — Phase 6: תיקונים ומיקס
+
+הדוח המלא: [phase-reports/phase-6.md](phase-reports/phase-6.md).
+
+- נוסף `src/svc_engine/postfx/`: repair, בדיקת F0 ותיקון מוגבל, מעטפת,
+  de-esser, A/B/C, מיקס ffmpeg דו-מעברי וייצוא WAV/MP3.
+- `ConversionPipeline` ו-`svc convert` ממשיכים כעת עד master של ‎-14 LUFS ומחזירים
+  דוח PostFX מלא; `rms_mix_rate` מיושם פעם אחת בלבד.
+- נוסף שער שחזורי `tools/bench_postfx.py` עם Raw/A/B/C, כיול `rms_mix_rate`,
+  שמות מוסווים ותוצאת winner ריקה עד האזנה אנושית.
+- בדיקת הרישוי של DeReverb חזרה: לא נמצא checkpoint שירה מתירני עם שרשרת הרשאות
+  מאומתת; מראה שמצהירה MIT אינה יכולה לבטל הצהרת GPL של מקור המשקולות.
+- 468 בדיקות נאספו (462 עברו, 6 דולגו); A/B/C הסינתטיות עמדו ביעד LUFS וללא clipping.
+
+---
+
 ## 18.8.2026 — Phase 4: מנוע המנעד וההזזה
 
 הדוח המלא: [phase-reports/phase-4.md](phase-reports/phase-4.md).

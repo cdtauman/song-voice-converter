@@ -1,16 +1,13 @@
-"""The full song-to-cover pipeline: separation -> analysis -> pitch -> convert.
+"""The full song-to-cover pipeline through the Phase-6 professional master.
 
-Phase 5 wires the earlier engines together for the first time. Given a song and
-a target voice this separates the stems (Phase 2), measures the singing's pitch
-(Phase 3), decides how far to shift it (Phase 4), converts the vocal into the
-voice (this phase), shifts the playback by the remainder `r`, and mixes the
-cover back together.
+The raw conversion remains independently testable, but the production path now
+continues through repair, output-F0 verification, dynamics, de-essing, the
+selected acoustic-space strategy and ffmpeg mastering.
 
 The heavy stages are injected -- the conversion backend, the F0 extractor and
 the pitch shifter -- so the orchestration (`render_cover`) is tested end to end
-with fakes, torch-free, while `run` wires the real engines. `mix_cover` is pure
-numpy and length-exact: the converted vocal and the shifted playback come back
-at the song's length, sample for sample.
+with fakes, torch-free, while `run` wires the real engines. `mix_cover` stays as
+the Phase-5/raw comparison helper; production summing is in postfx.mix.
 """
 
 from __future__ import annotations
@@ -18,7 +15,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +37,7 @@ from svc_engine.pitch import (
     decide_shift,
     shift_playback,
 )
+from svc_engine.postfx import PostFxConfig, PostFxPipeline, PostFxReport, export_audio
 from svc_engine.profiles import VoiceProfile
 from svc_engine.voices import VoiceLibrary
 
@@ -92,6 +90,7 @@ class ConversionOutcome:
     source: Path
     seconds_of_audio: float
     playback_strategy: PlaybackStrategy
+    postfx: PostFxReport | None = None
     timings: dict[str, float] = field(default_factory=dict)
     notes_he: tuple[str, ...] = ()
 
@@ -102,9 +101,15 @@ class ConversionOutcome:
     def summary_he(self) -> str:
         r = self.decision.best.remainder
         playback = "המוזיקה נשארה כמו שהיא" if r == 0 else f"המוזיקה הוזזה ב-{r} חצאי-טונים"
+        master = ""
+        if self.postfx is not None:
+            master = (
+                f" · {self.postfx.mix.integrated_lufs:.1f} LUFS"
+                f" · מרחב {self.postfx.ambience.strategy.value}"
+            )
         return (
             f"קאבר בקול '{self.voice_id}' · הזזת שירה {self.decision.best.semitones:+d} "
-            f"חצאי-טונים · {playback} · {self.total_seconds:.0f} שניות עיבוד"
+            f"חצאי-טונים · {playback}{master} · {self.total_seconds:.0f} שניות עיבוד"
         )
 
 
@@ -117,12 +122,14 @@ class ConversionPipeline:
         library: VoiceLibrary | None = None,
         conversion_backend: ConversionBackend | None = None,
         shifter: PitchShifter | None = None,
+        postfx_config: PostFxConfig | None = None,
     ) -> None:
         self.paths = paths or default_paths()
         self.paths.ensure()
         self.library = library or VoiceLibrary(self.paths)
         self._backend = conversion_backend
         self._shifter = shifter
+        self._postfx_config = postfx_config or PostFxConfig()
 
     # -- public API --------------------------------------------------------- #
 
@@ -136,6 +143,8 @@ class ConversionPipeline:
         recommended: ConversionParams,
         device: DeviceHint | None = None,
         strategy: PlaybackStrategy = PlaybackStrategy.WHOLE,
+        ambience: AudioBuffer | None = None,
+        output_f0_extractor: F0Extractor | None = None,
         on_progress: ProgressHook | None = None,
     ) -> tuple[AudioBuffer, ShiftDecision]:
         """The orchestration heart: decide the shift, convert, shift, mix.
@@ -144,6 +153,36 @@ class ConversionPipeline:
         tested end to end without the AI stack. Returns the cover and the
         decision that produced it.
         """
+        cover, decision, _report, _seconds = self._render_cover_detailed(
+            vocals,
+            f0,
+            playback,
+            profile,
+            voice,
+            recommended,
+            device=device,
+            strategy=strategy,
+            ambience=ambience,
+            output_f0_extractor=output_f0_extractor,
+            on_progress=on_progress,
+        )
+        return cover, decision
+
+    def _render_cover_detailed(
+        self,
+        vocals: AudioBuffer,
+        f0: F0Curve,
+        playback: AudioBuffer | dict[StemKind, AudioBuffer],
+        profile: VoiceProfile,
+        voice: VoiceHandle,
+        recommended: ConversionParams,
+        device: DeviceHint | None = None,
+        strategy: PlaybackStrategy = PlaybackStrategy.WHOLE,
+        ambience: AudioBuffer | None = None,
+        output_f0_extractor: F0Extractor | None = None,
+        on_progress: ProgressHook | None = None,
+    ) -> tuple[AudioBuffer, ShiftDecision, PostFxReport, float]:
+        """Detailed render used by ``run`` so the Phase-6 evidence is retained."""
         device = device or DeviceHint()
         backend = self._require_backend()
         shifter = self._require_shifter()
@@ -155,15 +194,18 @@ class ConversionPipeline:
         decision = decide_shift(dist, profile)
 
         params = params_for_voice(recommended, decision.best.semitones)
+        # Phase 6 owns envelope calibration. Disable RVC's internal copy of the
+        # same operation so rms_mix_rate is applied exactly once, in postfx.
+        backend_params = replace(params, rms_mix_rate=1.0)
 
         if on_progress is not None:
             on_progress(0.05, _MSG_CONVERT)
         try:
             backend.load(voice, device)
             converted = convert_in_chunks(
-                vocals, f0, backend, params,
+                vocals, f0, backend, backend_params,
                 on_progress=(
-                    (lambda done, total: on_progress(0.05 + 0.75 * done / total, _MSG_CONVERT))
+                    (lambda done, total: on_progress(0.05 + 0.60 * done / total, _MSG_CONVERT))
                     if on_progress is not None
                     else None
                 ),
@@ -171,13 +213,36 @@ class ConversionPipeline:
         finally:
             backend.unload()  # release VRAM after every run (Phase 5 DoD)
 
+        postfx_started = time.perf_counter()
+        converted_f0: F0Curve | None = None
+        if output_f0_extractor is not None:
+            if on_progress is not None:
+                on_progress(0.70, _MSG_ANALYZE)
+            try:
+                converted_f0 = output_f0_extractor.extract(converted, device, f0.hop_seconds)
+            finally:
+                output_f0_extractor.unload()
+
         if on_progress is not None:
-            on_progress(0.85, _MSG_MIX)
+            on_progress(0.82, _MSG_MIX)
         shifted = shift_playback(playback, decision.best.remainder, shifter, strategy)
-        cover = mix_cover(converted, shifted)
+        postfx = PostFxPipeline(
+            replace(self._postfx_config, rms_mix_rate=params.rms_mix_rate),
+            work_dir=self.paths.work,
+        ).run(
+            original_vocal=vocals,
+            converted_vocal=converted,
+            playback=shifted,
+            original_ambience=ambience,
+            reference_f0=f0,
+            converted_f0=converted_f0,
+            semitones=decision.best.semitones,
+            shifter=shifter,
+        )
+        postfx_seconds = time.perf_counter() - postfx_started
         if on_progress is not None:
             on_progress(1.0, _MSG_DONE)
-        return cover, decision
+        return postfx.cover, decision, postfx.report, postfx_seconds
 
     def run(
         self,
@@ -237,11 +302,17 @@ class ConversionPipeline:
 
         recommended = _params_from_manifest(entry.manifest.recommended)
         t = time.perf_counter()
-        cover, decision = self.render_cover(
+        cover, decision, postfx, postfx_seconds = self._render_cover_detailed(
             vocals, f0, playback, profile, entry.handle(), recommended,
-            device=device, strategy=strategy, on_progress=on_progress,
+            device=device,
+            strategy=strategy,
+            ambience=stems.get(StemKind.AMBIENCE),
+            output_f0_extractor=f0_extractor,
+            on_progress=on_progress,
         )
         timings["convert"] = time.perf_counter() - t
+        timings["postfx"] = postfx_seconds
+        timings["convert"] -= postfx_seconds
 
         return ConversionOutcome(
             cover=cover,
@@ -250,13 +321,12 @@ class ConversionPipeline:
             source=song,
             seconds_of_audio=vocals.seconds,
             playback_strategy=strategy,
+            postfx=postfx,
             timings=timings,
         )
 
     def write(self, outcome: ConversionOutcome, out_path: Path | str) -> Path:
-        from svc_engine.audio import io as audio_io
-
-        return audio_io.save_audio(outcome.cover, Path(out_path))
+        return export_audio(outcome.cover, out_path).path
 
     # -- internals ---------------------------------------------------------- #
 

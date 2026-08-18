@@ -1,0 +1,125 @@
+{
+  "phase": 6,
+  "source": "synthetic",
+  "objective_scope": "mechanics only; objective metrics do not measure naturalness or select a winner",
+  "rms_mix_rate": [
+    {
+      "rms_mix_rate": 0.0,
+      "envelope_correlation": 0.9999967627892898,
+      "report": {
+        "correlation_before": 0.18482471998618058,
+        "correlation_after": 0.9999967627892898,
+        "rms_mix_rate": 0.0,
+        "gain_min_db": -8.742413114076065,
+        "gain_max_db": 3.217203380623315
+      }
+    },
+    {
+      "rms_mix_rate": 0.25,
+      "envelope_correlation": 0.9990793011506222,
+      "report": {
+        "correlation_before": 0.18482471998618058,
+        "correlation_after": 0.9990793011506222,
+        "rms_mix_rate": 0.25,
+        "gain_min_db": -6.5568161569236825,
+        "gain_max_db": 2.41290156242067
+      }
+    },
+    {
+      "rms_mix_rate": 0.5,
+      "envelope_correlation": 0.9964203831325258,
+      "report": {
+        "correlation_before": 0.18482471998618058,
+        "correlation_after": 0.9964203831325258,
+        "rms_mix_rate": 0.5,
+        "gain_min_db": -4.371214979484794,
+        "gain_max_db": 1.6086003926105303
+      }
+    }
+  ],
+  "acoustic_space": [
+    {
+      "variant": "raw_phase5",
+      "length_exact": true,
+      "lufs": -16.17468268472394,
+      "peak_dbfs": -8.919670770604302,
+      "clipped": false,
+      "winner": null
+    },
+    {
+      "variant": "A",
+      "length_exact": true,
+      "lufs": -13.952843073744779,
+      "target_error_lu": 0.047156926255221165,
+      "peak_dbfs": -5.9876279366646425,
+      "clipped": false,
+      "ambience": {
+        "strategy": "A",
+        "measurement": {
+          "available": true,
+          "rt60_seconds": 4.0,
+          "wet_dry_ratio": 0.13148986650920647,
+          "note": ""
+        },
+        "original_layer_gain": 1.0
+      },
+      "winner": null
+    },
+    {
+      "variant": "B",
+      "length_exact": true,
+      "lufs": -13.96399371243166,
+      "target_error_lu": 0.036006287568339346,
+      "peak_dbfs": -6.7048952488201605,
+      "clipped": false,
+      "ambience": {
+        "strategy": "B",
+        "measurement": {
+          "available": true,
+          "rt60_seconds": 4.0,
+          "wet_dry_ratio": 0.13148986650920647,
+          "note": ""
+        },
+        "original_layer_gain": 0.0
+      },
+      "winner": null
+    },
+    {
+      "variant": "C",
+      "length_exact": true,
+      "lufs": -13.973042121119505,
+      "target_error_lu": 0.026957878880494945,
+      "peak_dbfs": -6.672469587903199,
+      "clipped": false,
+      "ambience": {
+        "strategy": "C",
+        "measurement": {
+          "available": true,
+          "rt60_seconds": 4.0,
+          "wet_dry_ratio": 0.13148986650920647,
+          "note": ""
+        },
+        "original_layer_gain": 0.15
+      },
+      "winner": null
+    }
+  ],
+  "selection": {
+    "winner": null,
+    "status": "blocked_pending_five_song_blind_listening",
+    "provisional_runtime_default": "B",
+    "reason": "B avoids the original singer timbre and does not require GPL at mix time"
+  },
+  "mix_chain": {
+    "filters": [
+      "ffmpeg amix",
+      "ffmpeg acompressor",
+      "ffmpeg loudnorm",
+      "ffmpeg alimiter"
+    ],
+    "python_copyleft_dependency": false,
+    "filters_available_in_lgpl_ffmpeg": true,
+    "tested_ffmpeg_binary": "GPL-enabled development build",
+    "packaging_requirement": "Phase 11 must bundle an LGPL-only ffmpeg build"
+  }
+}

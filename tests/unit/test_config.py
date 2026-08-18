@@ -3,7 +3,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from svc_engine.config import Settings, load_settings, paths, save_settings
+
+
+def test_convert_rejects_an_impossible_lufs_target() -> None:
+    from svc_engine.cli import build_parser
+
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["convert", "song.wav", "--voice", "v", "--target-lufs", "2"])
 
 
 def test_paths_are_all_under_the_root(tmp_path: Path) -> None:

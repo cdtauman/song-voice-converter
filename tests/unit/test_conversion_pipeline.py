@@ -227,6 +227,10 @@ def test_run_end_to_end_with_fakes(tmp_path: Path) -> None:
     assert outcome.cover.frames == vocals.frames
     assert backend.loaded and backend.unloaded
     assert "separate" in outcome.timings and "convert" in outcome.timings
+    assert outcome.postfx is not None
+    assert outcome.postfx.envelope.rms_mix_rate == pytest.approx(0.25)
+    assert backend.seen_params is not None
+    assert backend.seen_params.rms_mix_rate == pytest.approx(1.0)
     assert outcome.summary_he()
 
 

@@ -1,0 +1,19 @@
+# Phase 6 gate: raw Phase-5 output versus acoustic-space A/B/C.
+name: "תיקונים ומרחב אקוסטי"
+songs: [song1, song2, song3, song4, song5]
+focus_song: song3  # the reverberant ballad from docs/testing.md 1
+variants:
+  - id: raw_phase5
+    what: "פלט ההמרה הגולמי לפני Phase 6"
+  - id: A
+    what: "החזרת שכבת ההדהוד המקורית"
+  - id: B
+    what: "הד פרמטרי חדש, נמדד מהמקור"
+  - id: C
+    what: "B ועוד 15% משכבת המקור"
+rms_mix_rate: [0.0, 0.25, 0.5]
+objective_metrics: [length_exact, lufs, clipping, envelope_correlation]
+primary_metric: blind_listening
+target_lufs: -14.0
+tolerance_lu: 0.5
+status: "ממתין לחמשת השירים ולהאזנה עיוורת אנושית"

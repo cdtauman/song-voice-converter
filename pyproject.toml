@@ -9,13 +9,15 @@ description = "SongVoice - local high-quality singing voice conversion for Windo
 requires-python = ">=3.11,<3.12"
 license = { text = "Proprietary" }
 
-# Phase 1 keeps the default runtime dependencies deliberately minimal.  The
-# heavy stacks are opt-in; RVC's generated lock is rvc-requirements.lock.
+# The base runtime stays torch-free but includes Phase-6's small DSP stack.
+# Heavy AI stacks are opt-in; RVC's generated lock is rvc-requirements.lock.
 dependencies = [
     "numpy>=1.26",
     "platformdirs>=4.0",
+    "pyloudnorm>=0.2",
     "requests>=2.31",
     "rich>=13.0",
+    "scipy>=1.11",
 ]
 
 [project.optional-dependencies]
