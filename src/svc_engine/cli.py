@@ -6,6 +6,7 @@
     svc separate         split a song into stems
     svc analyze          F0 / range / key / segments / preview of a vocal
     svc profile          compute a target voice's range profile
+    svc pitch            decide the shift to seat a song in a target voice
     svc serve            run the RPC engine on stdin/stdout
     svc version
 """
@@ -287,6 +288,46 @@ def _cmd_profile(args: argparse.Namespace) -> int:
     return _EXIT_OK
 
 
+def _cmd_pitch(args: argparse.Namespace) -> int:
+    """Decide how far to shift a song to seat it in a target voice."""
+    import json
+
+    import numpy as np
+
+    from svc_engine.analysis.features import align_to, frame_rms
+    from svc_engine.audio import io as audio_io
+    from svc_engine.pitch import PitchDistribution, decide_shift, explain_decision
+    from svc_engine.profiles import VoiceProfile
+
+    p = paths()
+    p.ensure()
+    profile = VoiceProfile.load(args.voice)
+    extractor, device = _f0_extractor_and_device(args.method, args.no_download)
+    audio = audio_io.load_audio(args.input, duration_seconds=args.seconds)
+
+    if not args.quiet:
+        print("מודדים את גובה השירה ומחליטים על ההזזה…")
+    curve = extractor.extract(audio, device, 0.01)
+    extractor.unload()
+
+    f0_hz = np.asarray(curve.hz, dtype=np.float64).ravel()
+    mono = audio.samples.mean(axis=0) if audio.samples.ndim == 2 else audio.samples
+    energy = align_to(frame_rms(mono, audio.sample_rate, curve.hop_seconds), f0_hz.size)
+    dist = PitchDistribution.from_f0(f0_hz, energy)
+
+    decision = decide_shift(dist, profile)
+
+    print()
+    print(explain_decision(decision))
+    if args.report:
+        Path(args.report).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.report).write_text(
+            json.dumps(decision.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"  📄 דוח: {args.report}")
+    return _EXIT_OK
+
+
 def _cmd_serve(_: argparse.Namespace) -> int:
     from svc_engine.rpc import serve_stdio
 
@@ -376,6 +417,22 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--no-download", action="store_true", help="לא להוריד מודלים חסרים")
     pr.add_argument("-q", "--quiet", action="store_true", help="בלי הודעות התקדמות")
     pr.set_defaults(func=_cmd_profile)
+
+    pt = sub.add_parser("pitch", help="החלטת הזזה: כמה להזיז שיר כדי שיתאים לקול היעד")
+    pt.add_argument("input", help="קובץ הווקאל (רצוי שירה מופרדת)")
+    pt.add_argument("--voice", required=True, metavar="FILE", help="קובץ פרופיל הקול (JSON)")
+    pt.add_argument(
+        "--method", choices=["fcpe", "rmvpe"], default="fcpe",
+        help="שיטת זיהוי הגובה: fcpe (מהיר, ברירת מחדל) או rmvpe (מדויק)",
+    )
+    pt.add_argument("--report", metavar="FILE", help="לכתוב את ההחלטה כ-JSON לקובץ")
+    pt.add_argument(
+        "--seconds", type=float, default=None,
+        help="לנתח רק את X השניות הראשונות (לבדיקות)",
+    )
+    pt.add_argument("--no-download", action="store_true", help="לא להוריד מודלים חסרים")
+    pt.add_argument("-q", "--quiet", action="store_true", help="בלי הודעות התקדמות")
+    pt.set_defaults(func=_cmd_pitch)
 
     s = sub.add_parser("serve", help="הרצת המנוע במצב RPC")
     s.set_defaults(func=_cmd_serve)

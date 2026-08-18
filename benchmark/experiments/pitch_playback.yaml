@@ -1,0 +1,19 @@
+# Phase 4 gate 1 -- playback strategy x shift-size (docs/testing.md 5a).
+# Run with: python tools/bench_pitch.py --playback <instrumental.wav>
+#
+# The winner at each |r| is decided by BLIND listening on real material, not by
+# an objective metric -- there is no good objective measure of "the drums lost
+# their snap". The harness records length-exactness and artifact scores; a human
+# fills the `winner` column. Prediction (may be wrong): A wins for |r| <= 2, B
+# beyond. The measured table overrides the prediction.
+name: "אסטרטגיית פלייבק × גודל הזזה"
+songs: [song1, song2, song3, song4, song5]
+strategies:
+  - id: A
+    what: "הזזת הפלייבק כמכלול"
+  - id: B
+    what: "פיצול בס/תופים/שאר, הזזת הכול חוץ מתופים"
+shift_sizes: [1, 2, 3, 4, 6]      # |r|
+metrics: [length_exact, artifacts, blind_listen]
+decides: "טבלת ברירת מחדל של אסטרטגיה לכל |r|"
+status: "ממתין לחומרי בדיקה + האזנה עיוורת אנושית"

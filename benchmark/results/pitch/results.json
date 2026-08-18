@@ -1,0 +1,254 @@
+{
+  "calibration": [
+    {
+      "profile": "bass_baritone",
+      "target_median_note": "D3",
+      "decision": {
+        "best": {
+          "semitones": -12,
+          "octaves": -1,
+          "remainder": 0,
+          "playback_semitones": 0,
+          "needs_playback_shift": false,
+          "cost": 0.16667,
+          "breakdown": {
+            "comfort": 0.0,
+            "absolute": 0.0,
+            "median": 0.16667,
+            "playback": 0.0,
+            "quality": 0.0
+          }
+        },
+        "alternatives": [
+          {
+            "semitones": -13,
+            "octaves": -1,
+            "remainder": -1,
+            "playback_semitones": -1,
+            "needs_playback_shift": true,
+            "cost": 0.25238,
+            "breakdown": {
+              "comfort": 0.08571,
+              "absolute": 0.0,
+              "median": 0.08333,
+              "playback": 0.08333,
+              "quality": 0.0
+            }
+          },
+          {
+            "semitones": -14,
+            "octaves": -1,
+            "remainder": -2,
+            "playback_semitones": -2,
+            "needs_playback_shift": true,
+            "cost": 0.25238,
+            "breakdown": {
+              "comfort": 0.08571,
+              "absolute": 0.0,
+              "median": 0.0,
+              "playback": 0.16667,
+              "quality": 0.0
+            }
+          }
+        ],
+        "weights": {
+          "comfort": 1.0,
+          "absolute": 4.0,
+          "median": 1.0,
+          "playback": 0.5,
+          "quality": 1.0
+        },
+        "song_median_midi": 64.0,
+        "song_median_note": "E4",
+        "target_voice": "bass_baritone",
+        "target_median_note": "D3",
+        "quality_curve_measured": false
+      },
+      "explanation_he": "✅ מומלץ: להוריד את השירה באוקטבה שלמה (12 חצאי טונים). המוזיקה נשארת בדיוק כמו שהיא.\nאפשרות נוספת: להוריד את השירה ב-13 חצאי טונים — אז צריך להוריד גם את המוזיקה בחצי טון.\nאפשרות נוספת: להוריד את השירה ב-14 חצאי טונים — אז צריך להוריד גם את המוזיקה בטון שלם.\nℹ️ עקומת האיכות של הקול הזה עדיין לא נמדדה — ההמלצה מתבססת על המנעד בלבד. היא תדויק אחרי מדידת האיכות (שלב ההמרה)."
+    },
+    {
+      "profile": "tenor",
+      "target_median_note": "G3",
+      "decision": {
+        "best": {
+          "semitones": -9,
+          "octaves": -1,
+          "remainder": 3,
+          "playback_semitones": 3,
+          "needs_playback_shift": true,
+          "cost": 0.25,
+          "breakdown": {
+            "comfort": 0.0,
+            "absolute": 0.0,
+            "median": 0.0,
+            "playback": 0.25,
+            "quality": 0.0
+          }
+        },
+        "alternatives": [
+          {
+            "semitones": -10,
+            "octaves": -1,
+            "remainder": 2,
+            "playback_semitones": 2,
+            "needs_playback_shift": true,
+            "cost": 0.33571,
+            "breakdown": {
+              "comfort": 0.08571,
+              "absolute": 0.0,
+              "median": 0.08333,
+              "playback": 0.16667,
+              "quality": 0.0
+            }
+          },
+          {
+            "semitones": -11,
+            "octaves": -1,
+            "remainder": 1,
+            "playback_semitones": 1,
+            "needs_playback_shift": true,
+            "cost": 0.33571,
+            "breakdown": {
+              "comfort": 0.08571,
+              "absolute": 0.0,
+              "median": 0.16667,
+              "playback": 0.08333,
+              "quality": 0.0
+            }
+          }
+        ],
+        "weights": {
+          "comfort": 1.0,
+          "absolute": 4.0,
+          "median": 1.0,
+          "playback": 0.5,
+          "quality": 1.0
+        },
+        "song_median_midi": 64.0,
+        "song_median_note": "E4",
+        "target_voice": "tenor",
+        "target_median_note": "G3",
+        "quality_curve_measured": false
+      },
+      "explanation_he": "✅ מומלץ: להוריד את השירה ב-9 חצאי טונים — אז צריך להעלות גם את המוזיקה ב-3 חצאי טונים.\nאפשרות נוספת: להוריד את השירה ב-10 חצאי טונים — אז צריך להעלות גם את המוזיקה בטון שלם.\nאפשרות נוספת: להוריד את השירה ב-11 חצאי טונים — אז צריך להעלות גם את המוזיקה בחצי טון.\nℹ️ עקומת האיכות של הקול הזה עדיין לא נמדדה — ההמלצה מתבססת על המנעד בלבד. היא תדויק אחרי מדידת האיכות (שלב ההמרה)."
+    },
+    {
+      "profile": "alto_female",
+      "target_median_note": "E4",
+      "decision": {
+        "best": {
+          "semitones": 0,
+          "octaves": 0,
+          "remainder": 0,
+          "playback_semitones": 0,
+          "needs_playback_shift": false,
+          "cost": 0.0,
+          "breakdown": {
+            "comfort": 0.0,
+            "absolute": 0.0,
+            "median": 0.0,
+            "playback": 0.0,
+            "quality": 0.0
+          }
+        },
+        "alternatives": [
+          {
+            "semitones": 1,
+            "octaves": 0,
+            "remainder": 1,
+            "playback_semitones": 1,
+            "needs_playback_shift": true,
+            "cost": 0.16667,
+            "breakdown": {
+              "comfort": 0.0,
+              "absolute": 0.0,
+              "median": 0.08333,
+              "playback": 0.08333,
+              "quality": 0.0
+            }
+          },
+          {
+            "semitones": -1,
+            "octaves": 0,
+            "remainder": -1,
+            "playback_semitones": -1,
+            "needs_playback_shift": true,
+            "cost": 0.25238,
+            "breakdown": {
+              "comfort": 0.08571,
+              "absolute": 0.0,
+              "median": 0.08333,
+              "playback": 0.08333,
+              "quality": 0.0
+            }
+          }
+        ],
+        "weights": {
+          "comfort": 1.0,
+          "absolute": 4.0,
+          "median": 1.0,
+          "playback": 0.5,
+          "quality": 1.0
+        },
+        "song_median_midi": 64.0,
+        "song_median_note": "E4",
+        "target_voice": "alto_female",
+        "target_median_note": "E4",
+        "quality_curve_measured": false
+      },
+      "explanation_he": "✅ מומלץ: אין צורך בהזזה — הקול כבר יושב בטווח הנוח של הזמר.\nאפשרות נוספת: להעלות את השירה בחצי טון — אז צריך להעלות גם את המוזיקה בחצי טון.\nאפשרות נוספת: להוריד את השירה בחצי טון — אז צריך להוריד גם את המוזיקה בחצי טון.\nℹ️ עקומת האיכות של הקול הזה עדיין לא נמדדה — ההמלצה מתבססת על המנעד בלבד. היא תדויק אחרי מדידת האיכות (שלב ההמרה)."
+    }
+  ],
+  "playback_matrix": {
+    "source": "synthetic 3-stem",
+    "shifter_available": true,
+    "note": "winner column is decided by blind listening on real material",
+    "rows": [
+      {
+        "abs_r": 1,
+        "r": -1,
+        "A_length_ok": true,
+        "A_artifacts": 0.02099,
+        "B_length_ok": true,
+        "B_artifacts": 0.02476,
+        "winner": null
+      },
+      {
+        "abs_r": 2,
+        "r": -2,
+        "A_length_ok": true,
+        "A_artifacts": 0.01699,
+        "B_length_ok": true,
+        "B_artifacts": 0.02433,
+        "winner": null
+      },
+      {
+        "abs_r": 3,
+        "r": -3,
+        "A_length_ok": true,
+        "A_artifacts": 0.0141,
+        "B_length_ok": true,
+        "B_artifacts": 0.02447,
+        "winner": null
+      },
+      {
+        "abs_r": 4,
+        "r": -4,
+        "A_length_ok": true,
+        "A_artifacts": 0.01179,
+        "B_length_ok": true,
+        "B_artifacts": 0.0244,
+        "winner": null
+      },
+      {
+        "abs_r": 6,
+        "r": -6,
+        "A_length_ok": true,
+        "A_artifacts": 0.00715,
+        "B_length_ok": true,
+        "B_artifacts": 0.02453,
+        "winner": null
+      }
+    ]
+  }
+}

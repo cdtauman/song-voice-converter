@@ -1,0 +1,21 @@
+# Phase 4 gate 2 -- cost-function weight calibration (docs/roadmap.md Phase 4).
+# Run with: python tools/bench_pitch.py --calibrate
+#
+# The weights w1..w5 are tuned over THREE voice profiles at once, never one, so
+# they are not fit to a single case (docs/testing.md 1a). The harness ships three
+# reference profiles (bass/baritone, tenor, alto) and reports the recommendation
+# each yields; a human sweeps the weights until the recommendation is accepted on
+# the five test songs (DoD #3). The w5 term stays zero for any voice whose
+# quality-vs-shift curve has not been measured -- absent, not guessed.
+name: "כיול משקלי פונקציית העלות"
+profiles:
+  - id: bass_baritone
+    role: "המקרה המרכזי — נשי→גברי, הזזה גדולה למטה"
+  - id: tenor
+    role: "הזזה קטנה למטה — בודק שהמנוע לא מגזים"
+  - id: alto_female
+    role: "הזזה קטנה או למעלה — הכיוון ההפוך"
+weights: [comfort, absolute, median, playback, quality]  # w1..w5
+metrics: [recommendation, human_accept]
+decides: "ערכי w1..w5 סופיים"
+status: "המנגנון מוכן; הכיול הסופי ממתין ל-3 קולות אמיתיים + שיפוט אנושי"

@@ -3,10 +3,11 @@
 תוכנה מקומית (רצה על המחשב, בלי ענן) שממירה שיר שמבוצע בקול אחד לקול אחר,
 תוך שמירה על המנגינה, ההגייה, התזמון, הסלסולים והרגש של הביצוע המקורי.
 
-> **מצב הפרויקט:** Phase 3 הושלם — מנוע הניתוח עובד.
-> יש מנוע שמפריד שיר לשכבות (Phase 2), ומנוע שמנתח את השירה: עקומת גובה (F0),
-> מנעד ביחידות MIDI, סולם השיר, מקטעי שירה, ובחירת קטע Preview מייצג.
-> יש גם חישוב פרופיל מנעד לקול יעד. אין עדיין החלטת הזזה, המרת קול או ממשק גרפי.
+> **מצב הפרויקט:** Phase 4 הושלם — מנוע המנעד וההזזה עובד.
+> יש מנוע שמפריד שיר לשכבות (Phase 2), מנוע שמנתח את השירה (Phase 3: F0, מנעד,
+> סולם, מקטעים, Preview), ומנוע שמחליט **כמה להזיז** את השיר כדי שיתאים לקול היעד
+> (Phase 4: הפירוק `s = 12k + r`, פונקציית העלות, הסבר בעברית, ומזיז גובה ששומר
+> אורך מדויק). אין עדיין המרת קול בפועל או ממשק גרפי.
 
 ## מה כבר עובד
 
@@ -16,6 +17,7 @@ svc models                                  # קטלוג המודלים והרי
 svc separate "song.mp3" --quality balanced --out ./out
 svc analyze "vocals.wav" --report report.json --plot report.png
 svc profile "voice_sample.wav" --name yossi --out yossi.json
+svc pitch "vocals.wav" --voice yossi.json --report pitch.json
 ```
 
 | שלב | מצב | דוח |
@@ -23,8 +25,9 @@ svc profile "voice_sample.wav" --name yossi --out yossi.json
 | Phase 0 — מחקר ותכנון | ✅ | — |
 | Phase 1 — Spike תאימות + שלד | ✅ | [phase-1.md](docs/phase-reports/phase-1.md) |
 | Phase 2 — מנוע ההפרדה | ✅ | [phase-2.md](docs/phase-reports/phase-2.md) |
-| **Phase 3 — מנוע הניתוח** | ✅ | [phase-3.md](docs/phase-reports/phase-3.md) |
-| Phase 4 — מנוע המנעד וההזזה | ⏭️ הבא | — |
+| Phase 3 — מנוע הניתוח | ✅ | [phase-3.md](docs/phase-reports/phase-3.md) |
+| **Phase 4 — מנוע המנעד וההזזה** | ✅ | [phase-4.md](docs/phase-reports/phase-4.md) |
+| Phase 5 — מנוע המרת הקול | ⏭️ הבא | — |
 
 ## המסמכים
 
@@ -45,10 +48,12 @@ svc profile "voice_sample.wav" --name yossi --out yossi.json
 
 ## איך מתקדמים מכאן
 
-1. **לאסוף את חומרי הבדיקה** — 5 שירים ו-2 קטעי ווקאל יבשים, לפי
-   [docs/testing.md §1](docs/testing.md). בלעדיהם אי אפשר לשפוט את בחירת ה-Preview
-   על מוזיקה אמיתית — הסייג הפתוח היחיד של Phase 3 (וגם של Phase 2).
-2. לומר "Start Phase 4" — מנוע המנעד וההזזה.
+1. **לאסוף את חומרי הבדיקה** — 5 שירים, 2 קטעי ווקאל יבשים, ו-3 קולות יעד
+   (בס/בריטון, טנור, אלט), לפי [docs/testing.md §1, §1א](docs/testing.md). בלעדיהם
+   אי אפשר לכייל את משקלי ההזזה ולשפוט את ההמלצה על מוזיקה אמיתית — הסייג הפתוח
+   של Phase 2, 3 ו-4.
+2. לומר "Start Phase 5" — מנוע המרת הקול. הוא גם מה שמאפשר סוף-סוף למדוד את עקומת
+   האיכות (`quality_vs_shift`) שנשארה `null` ב-Phase 4.
 
 ## מדיניות שימוש בקולות
 

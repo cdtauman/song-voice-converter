@@ -17,7 +17,7 @@ The dataclass and its (de)serialisation are pure numpy and unit-tested; only
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -45,10 +45,18 @@ class VoiceProfile:
     f0_method: str
     sample_seconds: float
     voiced_frames: int
+    # Measured (shift -> penalty) samples, filled by pitch/quality_probe against a
+    # running conversion model (Phase 4/5). None means "not measured yet", which
+    # the cost function reads as a zero w5 term rather than a guess.
+    quality_vs_shift: list[list[float]] | None = None
 
     @property
     def comfortable_span(self) -> float:
         return self.comfort_high - self.comfort_low
+
+    def with_quality_curve(self, curve: list[list[float]]) -> VoiceProfile:
+        """A copy carrying a measured quality-vs-shift curve. Frozen, so a copy."""
+        return replace(self, quality_vs_shift=curve)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -67,8 +75,9 @@ class VoiceProfile:
             "f0_method": self.f0_method,
             "sample_seconds": round(self.sample_seconds, 3),
             "voiced_frames": self.voiced_frames,
-            # Reserved for Phase 4's measured penalty curve; absent, not guessed.
-            "quality_vs_shift": None,
+            # Phase 4's measured penalty curve; absent (None), not guessed, until
+            # measured against a running conversion model (pitch/quality_probe).
+            "quality_vs_shift": self.quality_vs_shift,
         }
 
     def save(self, path: Path | str) -> Path:
@@ -91,6 +100,11 @@ class VoiceProfile:
             f0_method=str(data.get("f0_method") or ""),
             sample_seconds=float(data.get("sample_seconds") or 0.0),
             voiced_frames=int(data.get("voiced_frames") or 0),
+            quality_vs_shift=(
+                [[float(p[0]), float(p[1])] for p in data["quality_vs_shift"]]
+                if data.get("quality_vs_shift")
+                else None
+            ),
         )
 
     @classmethod
