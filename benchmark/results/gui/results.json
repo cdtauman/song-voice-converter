@@ -1,0 +1,67 @@
+{
+  "phase": 8,
+  "screens": [
+    {
+      "screen": "wizard-song",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "wizard-voice",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "wizard-quality",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "wizard-processing",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "wizard-recommendation",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "wizard-preview",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "wizard-result",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "screen-voices",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "screen-projects",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "screen-settings",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
+    }
+  ],
+  "all_rtl": true,
+  "result": "pass"
+}

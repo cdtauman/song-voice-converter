@@ -8,18 +8,31 @@ from __future__ import annotations
 
 import contextlib
 import itertools
+import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from svc_engine.rpc.protocol import Request, decode_response, encode
+from svc_engine.rpc.protocol import Request, decode_event, decode_response, encode
 
-__all__ = ["EngineClient", "EngineUnavailable"]
+__all__ = ["EngineCallError", "EngineClient", "EngineUnavailable"]
+
+EventCallback = Callable[[str, dict[str, Any]], None]
 
 
 class EngineUnavailable(RuntimeError):
     """The engine process could not be started or died unexpectedly."""
+
+
+class EngineCallError(RuntimeError):
+    """A structured, user-safe failure returned by the engine."""
+
+    def __init__(self, code: str, message_he: str) -> None:
+        self.code = code
+        self.message_he = message_he
+        super().__init__(message_he)
 
 
 class EngineClient:
@@ -93,7 +106,13 @@ class EngineClient:
 
     # -- calls ------------------------------------------------------------- #
 
-    def call(self, method: str, **params: Any) -> Any:
+    def call(
+        self,
+        method: str,
+        *,
+        on_event: EventCallback | None = None,
+        **params: Any,
+    ) -> Any:
         if not self.is_running:
             self.start()
         proc = self._proc
@@ -108,12 +127,31 @@ class EngineClient:
         except (OSError, ValueError) as exc:
             raise EngineUnavailable(str(exc)) from exc
 
+        while line:
+            try:
+                raw = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise EngineUnavailable("engine returned an invalid message") from exc
+            if "event" not in raw:
+                break
+            event = decode_event(line)
+            if event.id == req.id and on_event is not None:
+                on_event(event.event, event.data)
+            try:
+                line = proc.stdout.readline()
+            except (OSError, ValueError) as exc:
+                raise EngineUnavailable(str(exc)) from exc
+
         if not line:
             raise EngineUnavailable("engine closed the connection")
-
         resp = decode_response(line)
+        if resp.id != req.id:
+            raise EngineUnavailable("engine response id does not match the request")
         if not resp.ok:
-            raise EngineUnavailable(resp.error_message_he or resp.error_code or "unknown error")
+            raise EngineCallError(
+                resp.error_code or "E_INTERNAL",
+                resp.error_message_he or "משהו השתבש. נסה שוב.",
+            )
         return resp.result
 
     def ping(self, echo: str = "hello") -> dict[str, Any]:
@@ -142,6 +180,76 @@ class EngineClient:
 
     def save_project(self, project_id: str, name: str, data: dict[str, Any]) -> dict[str, Any]:
         return dict(self.call("projects.save", project_id=project_id, name=name, data=data))
+
+    def settings(self) -> dict[str, Any]:
+        return dict(self.call("settings.get"))
+
+    def save_settings(self, **values: Any) -> dict[str, Any]:
+        return dict(self.call("settings.save", **values))
+
+    def voices(self) -> list[dict[str, Any]]:
+        return list(self.call("voices.list"))
+
+    def import_voice(
+        self,
+        archive: str,
+        display_name: str,
+        *,
+        consent_confirmed: bool,
+        consent_note: str = "",
+    ) -> dict[str, Any]:
+        return dict(
+            self.call(
+                "voices.import",
+                archive=archive,
+                display_name=display_name,
+                consent_confirmed=consent_confirmed,
+                consent_note=consent_note,
+            )
+        )
+
+    def remove_voice(self, voice_id: str) -> None:
+        self.call("voices.remove", voice_id=voice_id)
+
+    def preview_cover(
+        self,
+        *,
+        song: str,
+        voice_id: str,
+        quality: str,
+        preview_seconds: float = 30.0,
+        on_event: EventCallback | None = None,
+    ) -> dict[str, Any]:
+        return dict(
+            self.call(
+                "covers.preview",
+                song=song,
+                voice_id=voice_id,
+                quality=quality,
+                preview_seconds=preview_seconds,
+                on_event=on_event,
+            )
+        )
+
+    def render_cover(
+        self,
+        *,
+        song: str,
+        voice_id: str,
+        quality: str,
+        output: str,
+        on_event: EventCallback | None = None,
+    ) -> dict[str, Any]:
+        return dict(
+            self.call(
+                "covers.run",
+                song=song,
+                voice_id=voice_id,
+                quality=quality,
+                output=output,
+                on_event=on_event,
+            )
+        )
 
     # -- context manager --------------------------------------------------- #
 

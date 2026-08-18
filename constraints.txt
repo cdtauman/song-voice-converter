@@ -79,6 +79,9 @@ pycparser==3.0
 pydub==0.25.1
 pyelftools==0.32
 pyloudnorm==0.2.0
+pyside6==6.11.1
+pyside6-addons==6.11.1
+pyside6-essentials==6.11.1
 python-stretch==0.3.1
 pyyaml==6.0.3
 requests==2.34.2
@@ -88,6 +91,7 @@ samplerate==0.1.0
 scikit-learn==1.9.0
 scipy==1.17.1
 setuptools==78.1.0
+shiboken6==6.11.1
 six==1.17.0
 soundfile==0.14.0
 soxr==1.1.0

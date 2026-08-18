@@ -7,20 +7,22 @@ never executable callables supplied over JSON.
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 from collections.abc import Callable
 from typing import Any, TextIO
 
-from svc_engine.config import Paths, load_settings, paths
+from svc_engine.config import Paths, Settings, load_settings, paths, save_settings
 from svc_engine.diag import run_all_checks
 from svc_engine.diag.report import overall_status
 from svc_engine.errors import EngineError, ErrorCode, message_for
 from svc_engine.logging_setup import get_logger
-from svc_engine.rpc.protocol import PROTOCOL_VERSION, Request, Response, encode
+from svc_engine.rpc.protocol import PROTOCOL_VERSION, Event, Request, Response, encode
 
 log = get_logger(__name__)
 
 Handler = Callable[[dict[str, Any]], Any]
+EventSink = Callable[[Event], None]
 
 __all__ = ["Server", "serve_stdio"]
 
@@ -39,7 +41,16 @@ class Server:
             "projects.list": self._projects_list,
             "projects.load": self._projects_load,
             "projects.save": self._projects_save,
+            "settings.get": self._settings_get,
+            "settings.save": self._settings_save,
+            "voices.list": self._voices_list,
+            "voices.import": self._voices_import,
+            "voices.remove": self._voices_remove,
+            "covers.preview": self._covers_preview,
+            "covers.run": self._covers_run,
         }
+        self._request_id = ""
+        self._event_sink: EventSink | None = None
 
     # -- methods ----------------------------------------------------------- #
 
@@ -113,35 +124,148 @@ class Server:
         data = params.get("data")
         if not isinstance(data, dict):
             raise ValueError("project data must be an object")
-        return ProjectStore(self._paths.projects).save(
-            str(params["project_id"]), name=str(params["name"]), data=data
-        ).to_dict()
+        return (
+            ProjectStore(self._paths.projects)
+            .save(str(params["project_id"]), name=str(params["name"]), data=data)
+            .to_dict()
+        )
+
+    def _settings_get(self, params: dict[str, Any]) -> dict[str, Any]:
+        return dataclasses.asdict(load_settings(self._paths))
+
+    def _settings_save(self, params: dict[str, Any]) -> dict[str, Any]:
+        current = dataclasses.asdict(load_settings(self._paths))
+        allowed = {
+            "quality",
+            "prefer_gpu",
+            "target_lufs",
+            "output_dir",
+            "keep_cache_gb",
+            "check_updates",
+            "allow_model_downloads",
+            "language",
+            "theme",
+            "advanced_mode",
+        }
+        current.update({key: value for key, value in params.items() if key in allowed})
+        settings = Settings(**current)
+        if settings.quality not in {"fast", "balanced", "max"}:
+            raise ValueError("invalid quality")
+        if settings.theme not in {"system", "light", "dark"}:
+            raise ValueError("invalid theme")
+        if not -70.0 <= float(settings.target_lufs) <= -5.0:
+            raise ValueError("invalid target loudness")
+        if float(settings.keep_cache_gb) < 0:
+            raise ValueError("invalid cache size")
+        save_settings(settings, self._paths)
+        return dataclasses.asdict(settings)
+
+    def _voices_list(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        from svc_engine.voices import VoiceLibrary
+        from svc_engine.voices.manifest import AVATAR_FILE, SAMPLE_FILE
+
+        voices = []
+        for entry in VoiceLibrary(self._paths).list():
+            manifest = entry.manifest
+            voices.append(
+                {
+                    **manifest.to_dict(),
+                    "usable": manifest.usable and entry.profile_path is not None,
+                    "health_note_he": manifest.health.note_he,
+                    "has_profile": entry.profile_path is not None,
+                    "sample_path": str(entry.root / SAMPLE_FILE)
+                    if manifest.has_sample and (entry.root / SAMPLE_FILE).is_file()
+                    else None,
+                    "avatar_path": str(entry.root / AVATAR_FILE)
+                    if manifest.has_avatar and (entry.root / AVATAR_FILE).is_file()
+                    else None,
+                }
+            )
+        return voices
+
+    def _voices_import(self, params: dict[str, Any]) -> dict[str, Any]:
+        from svc_engine.voices import VoiceLibrary, import_voice_from_zip
+
+        result = import_voice_from_zip(
+            str(params["archive"]),
+            display_name=str(params.get("display_name") or "קול חדש"),
+            consent_confirmed=bool(params.get("consent_confirmed", False)),
+            consent_note=str(params.get("consent_note") or ""),
+            library=VoiceLibrary(self._paths),
+        )
+        return {
+            "voice_id": result.voice_id,
+            "summary_he": result.summary_he(),
+        }
+
+    def _voices_remove(self, params: dict[str, Any]) -> dict[str, bool]:
+        from svc_engine.voices import VoiceLibrary
+
+        VoiceLibrary(self._paths).remove(str(params["voice_id"]))
+        return {"removed": True}
+
+    def _covers_preview(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._run_cover(params, preview=True)
+
+    def _covers_run(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._run_cover(params, preview=False)
+
+    def _run_cover(self, params: dict[str, Any], *, preview: bool) -> dict[str, Any]:
+        from svc_engine.workflows import run_cover
+
+        return run_cover(
+            self._paths,
+            song=str(params["song"]),
+            voice_id=str(params["voice_id"]),
+            quality=str(params.get("quality") or "balanced"),
+            output=None if preview else str(params["output"]),
+            preview=preview,
+            preview_seconds=float(params.get("preview_seconds") or 30.0),
+            on_progress=lambda fraction, message: self._emit(
+                "progress", {"fraction": fraction, "message_he": message}
+            ),
+        )
+
+    def _emit(self, event: str, data: dict[str, Any]) -> None:
+        if self._event_sink is not None:
+            self._event_sink(Event(id=self._request_id, event=event, data=data))
 
     # -- dispatch ---------------------------------------------------------- #
 
-    def handle(self, req: Request) -> Response:
+    def handle(self, req: Request, on_event: EventSink | None = None) -> Response:
         handler = self._handlers.get(req.method)
         if handler is None:
             msg = message_for(ErrorCode.INTERNAL)
             return Response(
-                id=req.id, ok=False,
-                error_code=ErrorCode.INTERNAL.value, error_message_he=msg.render(),
+                id=req.id,
+                ok=False,
+                error_code=ErrorCode.INTERNAL.value,
+                error_message_he=msg.render(),
             )
+        self._request_id = req.id
+        self._event_sink = on_event
         try:
             return Response(id=req.id, ok=True, result=handler(req.params))
         except EngineError as exc:
             log.warning("method %s failed: %s", req.method, exc)
             return Response(
-                id=req.id, ok=False,
-                error_code=exc.code.value, error_message_he=exc.user_message.render(),
+                id=req.id,
+                ok=False,
+                error_code=exc.code.value,
+                error_message_he=exc.user_message.render(),
             )
         except Exception:  # noqa: BLE001  the engine must never die on one bad call
             log.exception("unhandled error in method %s", req.method)
             msg = message_for(ErrorCode.INTERNAL)
             return Response(
-                id=req.id, ok=False,
-                error_code=ErrorCode.INTERNAL.value, error_message_he=msg.render(),
+                id=req.id,
+                ok=False,
+                error_code=ErrorCode.INTERNAL.value,
+                error_message_he=msg.render(),
             )
+        finally:
+            self._request_id = ""
+            self._event_sink = None
 
 
 def serve_stdio(stdin: TextIO | None = None, stdout: TextIO | None = None) -> None:
@@ -162,5 +286,10 @@ def serve_stdio(stdin: TextIO | None = None, stdout: TextIO | None = None) -> No
         except Exception:  # noqa: BLE001
             log.warning("dropped malformed request line")
             continue
-        stdout.write(encode(server.handle(req)))
+
+        def send_event(event: Event) -> None:
+            stdout.write(encode(event))
+            stdout.flush()
+
+        stdout.write(encode(server.handle(req, on_event=send_event)))
         stdout.flush()

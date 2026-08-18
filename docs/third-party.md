@@ -21,6 +21,7 @@
 | [`pymss`](https://github.com/pymss-project/pymss) | 2.1.3 | MIT | inference + מרשם מודלים ומראה עצמאיים | **3 — עטיפה במתאם שלנו** (`PymssBackend`) |
 | [`python-stretch`](https://github.com/gregogiudici/python-stretch) | 0.3.1 | MIT | הזזת גובה (Signalsmith Stretch) | 1 — שימוש ישיר (Phase 4) |
 | [`torchfcpe`](https://pypi.org/project/torchfcpe/) | 0.0.4 | MIT | זיהוי F0 מהיר | 1 — שימוש ישיר (Phase 3) |
+| [`PySide6`](https://doc.qt.io/qtforpython-6/) | 6.11.1 | LGPL-3.0 (קישור דינמי) | ממשק Windows, RTL, drag/drop ו־Qt Multimedia | 1 — שימוש ישיר (Phase 8) |
 | `ffmpeg` | build חיצוני | LGPL | קליטה, ייצוא, `loudnorm`/`alimiter`/`acompressor` | 1 — קישור דינמי, נקרא כתהליך |
 
 ### 1.3 קוד שהועתק לריפו (דרגה 4 — הכנסת תת-קבוצה)

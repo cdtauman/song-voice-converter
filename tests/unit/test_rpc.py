@@ -7,7 +7,16 @@ import json
 from pathlib import Path
 
 from svc_engine.config import paths
-from svc_engine.rpc import Request, Response, Server, decode_request, decode_response, encode
+from svc_engine.rpc import (
+    Event,
+    Request,
+    Response,
+    Server,
+    decode_event,
+    decode_request,
+    decode_response,
+    encode,
+)
 from svc_engine.rpc.server import serve_stdio
 
 
@@ -29,6 +38,11 @@ def test_response_roundtrip_error() -> None:
     assert not back.ok
     assert back.error_code == "E_DISK_FULL"
     assert back.error_message_he == "אין מקום."
+
+
+def test_progress_event_roundtrip() -> None:
+    event = Event(id="8", event="progress", data={"fraction": 0.25, "message_he": "מפרידים…"})
+    assert decode_event(encode(event)) == event
 
 
 def test_encoding_is_one_line_utf8() -> None:
@@ -98,3 +112,46 @@ def test_phase7_project_cache_and_history_methods(tmp_path: Path) -> None:
     assert cache.ok and cache.result == {"entries": 0, "size_bytes": 0}
     assert history.ok and history.result == []
     assert recoverable.ok and recoverable.result == []
+
+
+def test_phase8_cover_rpc_streams_progress(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def fake_run_cover(_paths, **kwargs):  # type: ignore[no-untyped-def]
+        kwargs["on_progress"](0.5, "ממירים את הקול…")
+        return {"output": str(tmp_path / "preview.wav"), "preview": True}
+
+    monkeypatch.setattr("svc_engine.workflows.run_cover", fake_run_cover)
+    events: list[Event] = []
+    response = Server(paths(tmp_path)).handle(
+        Request(
+            id="preview",
+            method="covers.preview",
+            params={"song": "song.wav", "voice_id": "voice", "quality": "balanced"},
+        ),
+        on_event=events.append,
+    )
+
+    assert response.ok
+    assert response.result["preview"] is True
+    assert events == [
+        Event(
+            id="preview",
+            event="progress",
+            data={"fraction": 0.5, "message_he": "ממירים את הקול…"},
+        )
+    ]
+
+
+def test_phase8_settings_rpc_roundtrip(tmp_path: Path) -> None:
+    server = Server(paths(tmp_path))
+    saved = server.handle(
+        Request(
+            id="save-settings",
+            method="settings.save",
+            params={"quality": "max", "theme": "dark", "target_lufs": -15.0},
+        )
+    )
+    loaded = server.handle(Request(id="get-settings", method="settings.get"))
+
+    assert saved.ok and saved.result["quality"] == "max"
+    assert loaded.ok and loaded.result["theme"] == "dark"
+    assert loaded.result["target_lufs"] == -15.0
