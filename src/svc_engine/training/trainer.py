@@ -114,14 +114,23 @@ class TrainingCoordinator:
         env = os.environ.copy()
         source_root = str(Path(__file__).resolve().parents[2])
         env["PYTHONPATH"] = source_root + os.pathsep + env.get("PYTHONPATH", "")
-        command = [
-            sys.executable,
-            "-m",
-            "svc_engine.training.worker",
-            "--home",
-            str(self.paths.root),
-            session_id,
-        ]
+        if getattr(sys, "frozen", False):
+            command = [
+                sys.executable,
+                "--training-worker",
+                "--home",
+                str(self.paths.root),
+                session_id,
+            ]
+        else:
+            command = [
+                sys.executable,
+                "-m",
+                "svc_engine.training.worker",
+                "--home",
+                str(self.paths.root),
+                session_id,
+            ]
         flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
         proc = subprocess.Popen(
             command,

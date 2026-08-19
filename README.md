@@ -3,7 +3,7 @@
 תוכנה מקומית (רצה על המחשב, בלי ענן) שממירה שיר שמבוצע בקול אחד לקול אחר,
 תוך שמירה על המנגינה, ההגייה, התזמון, הסלסולים והרגש של הביצוע המקורי.
 
-> **מצב הפרויקט:** Phase 9 הושלם ברמת המימוש — ניתן ליצור קול חדש דרך הממשק.
+> **מצב הפרויקט:** Phase 11 הושלם ברמת המימוש והאריזה — ניתן להתקין ולהפעיל בלי Python.
 > יש מנוע שמפריד שיר לשכבות (Phase 2), מנוע שמנתח את השירה (Phase 3: F0, מנעד,
 > סולם, מקטעים, Preview), מנוע שמחליט **כמה להזיז** את השיר (Phase 4: `s = 12k + r`,
 > פונקציית העלות, הסבר בעברית, מזיז גובה מדויק-אורך), ו**מנוע המרת הקול** (Phase 5:
@@ -17,6 +17,9 @@
 > Applio+TITAN עמידה לעצירה/המשך, ETA, פרופיל מנעד אוטומטי וניהול מלא של כרטיסי קול.
 > **Phase 10** מוסיף מצב מתקדם, כוונון Preview בן ארבעה מועמדים, מטריצת benchmark
 > שחזורית ומסך A/B עיוור. Seed-VC ו-DDSP-SVC נשארים מחוץ לליבה תחת `env-bench`.
+> **Phase 11** מוסיף runtime עצמאי, מתקיני Windows עבריים online/offline, אשף
+> הפעלה ראשונה, עדכונים עם checksum/rollback ו־release CI. קבלת clean-machine
+> עם קאבר אמיתי, חתימה ו־mirror פרטי ממתינות לחומרים/credentials חיצוניים.
 > הכרעת האיכות הסופית
 > עדיין ממתינה למודלי קול, לחמשת השירים המורשים ולהאזנה עיוורת — ראה
 > [phase-6.md](docs/phase-reports/phase-6.md). אימות GUI מקצה־לקצה על שמע אמיתי
@@ -60,6 +63,7 @@ svc-bench run benchmark/experiments/my-test.toml --out benchmark/results/my-test
 | **Phase 8 — ממשק גרפי במצב פשוט** | ✅ מימוש + GUI/RTL gate; בדיקת שמע אנושית חסומה חיצונית | [phase-8.md](docs/phase-reports/phase-8.md) |
 | **Phase 9 — ניהול קולות ואשף אימון** | ✅ מימוש + session/quality/GUI; אימון קבלה על 15 דקות חסום על חומר חיצוני | [phase-9.md](docs/phase-reports/phase-9.md) |
 | **Phase 10 — מצב מתקדם ומעבדת benchmark** | ✅ מימוש ושערים מכניים; האזנת 5 מקרים ומטריצת מנועים חסומות על חומר חיצוני | [phase-10.md](docs/phase-reports/phase-10.md) |
+| **Phase 11 — אריזה, installer ועדכונים** | ✅ runtime ומתקינים נבנו; קבלת קאבר נקי, חתימה ו־mirror חסומים חיצונית | [phase-11.md](docs/phase-reports/phase-11.md) |
 
 ## המסמכים
 
@@ -91,6 +95,8 @@ svc-bench run benchmark/experiments/my-test.toml --out benchmark/results/my-test
    את אסטרטגיית המרחב ו-`rms_mix_rate`.
 4. להריץ את דוגמת Phase 10 על RVC/DDSP/Seed-VC, למלא חמישה ballots עיוורים ולאמת
    אותם ב־`tools/check_tuning_acceptance.py`; אף runtime של `env-bench` אינו נארז.
+5. למסור תעודת Authenticode ו־Hugging Face repo/token, ואז להריץ build מתויג ואת
+   קבלת Windows 11 הנקייה עם שיר וקול יעד מורשים לפי דוח Phase 11.
 
 ## מדיניות שימוש בקולות
 

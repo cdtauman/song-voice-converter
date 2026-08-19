@@ -27,8 +27,8 @@
         },
         {
           "name": "vocals_mel_band_roformer.yaml",
-          "size_bytes": 895,
-          "sha256": "df5c6a6664c3a589fd6fa94b83f1a97c11bcdb341c801eb23719045dc5eed7e2",
+          "size_bytes": 944,
+          "sha256": "b958b29c8f7195f0d86bee6759a33980db675c4ecaf2fcaa80fa125828e6cd38",
           "urls": [
             "https://huggingface.co/lainlives/audio-separator-models-old/resolve/49523422a02b68806a4471ab8806fc23c68a52c5/vocals_mel_band_roformer.yaml",
             "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/vocals_mel_band_roformer.yaml"

@@ -24,7 +24,7 @@
 | [`PySide6`](https://doc.qt.io/qtforpython-6/) | 6.11.1 | LGPL-3.0 (קישור דינמי) | ממשק Windows, RTL, drag/drop ו־Qt Multimedia | 1 — שימוש ישיר (Phase 8) |
 | [`noisereduce`](https://github.com/timsainb/noisereduce) | 3.0.3 | MIT | תלות runtime של שלב ה-preprocess ב-Applio; SongVoice מבצע את הניקוי לפניו | 1 — שימוש ישיר (Phase 9) |
 | [`tensorboard`](https://github.com/tensorflow/tensorboard) | 2.21.0 | Apache-2.0 | כתיבת מדדי האימון של Applio | 1 — שימוש ישיר (Phase 9) |
-| `ffmpeg` | build חיצוני | LGPL | קליטה, ייצוא, `loudnorm`/`alimiter`/`acompressor` | 1 — קישור דינמי, נקרא כתהליך |
+| `ffmpeg` | BtbN release `372453964`, asset `519628215`, `win64-lgpl-shared`, SHA-256 `df452481…3d3f4ca` | LGPL, shared build; build gate דוחה GPL/nonfree | קליטה, ייצוא, `loudnorm`/`alimiter`/`acompressor` | 1 — קישור דינמי, נקרא כתהליך ונארז ב־Phase 11 |
 
 ### 1.2 עטיפת מנגנון האימון (דרגה 3)
 

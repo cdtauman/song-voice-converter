@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QProgressDialog,
     QPushButton,
     QStackedWidget,
     QVBoxLayout,
@@ -28,6 +29,7 @@ from PySide6.QtWidgets import (
 from svc_app.design import Theme, apply_theme
 from svc_app.engine_client import EngineCallError, EngineClient
 from svc_app.i18n import error_text
+from svc_app.runtime import configure_bundled_runtime
 from svc_app.screens import (
     BenchmarkScreen,
     CoverWizard,
@@ -35,6 +37,7 @@ from svc_app.screens import (
     SettingsScreen,
     VoiceLibraryScreen,
 )
+from svc_app.screens.first_run import FirstRunDialog
 
 
 class EngineWorker(QObject):
@@ -137,10 +140,70 @@ class MainWindow(QMainWindow):
         self.projects.open_requested.connect(self._open_project)
         self.settings.theme_changed.connect(self._theme_changed)
         self.settings.advanced_changed.connect(self.wizard.advanced_toggle.setChecked)
+        self.settings.update_requested.connect(self._check_for_update)
 
         self._navigate(0)
         self.library.refresh()
         QTimer.singleShot(0, self._offer_recovery)
+
+    def offer_first_run(self) -> None:
+        try:
+            status = self.client.provisioning_status()
+        except Exception:
+            return
+        if not status.get("complete"):
+            FirstRunDialog(self.client, status, self).exec()
+
+    def _check_for_update(self) -> None:
+        try:
+            result = self.client.check_for_update()
+        except EngineCallError as exc:
+            QMessageBox.warning(self, "בדיקת העדכון נכשלה", exc.message_he)
+            return
+        except Exception:
+            QMessageBox.warning(self, "בדיקת העדכון נכשלה", "בדוק את החיבור ונסה שוב.")
+            return
+        release = result.get("release")
+        if not result.get("available") or not isinstance(release, dict):
+            QMessageBox.information(self, "עדכונים", "הגרסה המותקנת היא העדכנית ביותר.")
+            return
+        answer = QMessageBox.question(
+            self,
+            "עדכון זמין",
+            f"גרסה {release.get('version')} זמינה. להוריד כעת?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        progress = QProgressDialog("מורידים עדכון מאומת…", "", 0, 1000, self)
+        progress.setCancelButton(None)
+        progress.setWindowTitle("עדכון SongVoice")
+        progress.setAutoClose(False)
+        progress.show()
+
+        def operation(event):  # type: ignore[no-untyped-def]
+            return self.client.stage_update(release, on_event=event)
+
+        def on_success(_result: dict[str, Any]) -> None:
+            progress.close()
+            QMessageBox.information(
+                self, "העדכון מוכן", "העדכון המאומת יותקן אוטומטית בהפעלה הבאה."
+            )
+
+        def on_progress(fraction: float, message: str) -> None:
+            progress.setValue(round(fraction * 1000))
+            progress.setLabelText(message or "מורידים עדכון מאומת…")
+
+        def on_failure(code: str, message_he: str) -> None:
+            progress.close()
+            self._show_error(code, message_he)
+
+        self._start_worker(
+            operation,
+            on_success,
+            on_progress=on_progress,
+            on_failure=on_failure,
+        )
 
     def _navigate(self, index: int) -> None:
         if self._thread is not None and self._thread.isRunning() and index != 0:
@@ -190,6 +253,8 @@ class MainWindow(QMainWindow):
         self,
         operation: Callable[[Callable[[str, dict[str, Any]], None]], dict],
         on_success: Callable[[dict], None],
+        on_progress: Callable[[float, str], None] | None = None,
+        on_failure: Callable[[str, str], None] | None = None,
     ) -> None:
         if self._thread is not None and self._thread.isRunning():
             return
@@ -198,9 +263,9 @@ class MainWindow(QMainWindow):
         worker = EngineWorker(operation)
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
-        worker.progress.connect(self.wizard.update_progress)
+        worker.progress.connect(on_progress or self.wizard.update_progress)
         worker.succeeded.connect(on_success)
-        worker.failed.connect(self._show_error)
+        worker.failed.connect(on_failure or self._show_error)
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
@@ -301,10 +366,27 @@ def _available_output(source: Path) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
+    configure_bundled_runtime()
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    if "--training-worker" in raw_args:
+        worker_parser = argparse.ArgumentParser(add_help=False)
+        worker_parser.add_argument("--training-worker", action="store_true")
+        worker_parser.add_argument("--home", type=Path, required=True)
+        worker_parser.add_argument("session_id")
+        worker_args = worker_parser.parse_args(raw_args)
+        from svc_engine.training.worker import run
+
+        return run(worker_args.home, worker_args.session_id)
     parser = argparse.ArgumentParser(prog="songvoice", add_help=True)
+    parser.add_argument("--engine", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--smoke-test", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--screenshot", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.engine:
+        from svc_engine.rpc.server import serve_stdio
+
+        serve_stdio()
+        return 0
     instance = QApplication.instance()
     app = instance if isinstance(instance, QApplication) else QApplication(sys.argv[:1])
     app.setApplicationName("SongVoice")
@@ -312,6 +394,8 @@ def main(argv: list[str] | None = None) -> int:
     apply_theme(app, Theme.SYSTEM)
     window = MainWindow()
     window.show()
+    if not args.smoke_test:
+        QTimer.singleShot(0, window.offer_first_run)
     if args.screenshot:
 
         def save_screenshot() -> None:

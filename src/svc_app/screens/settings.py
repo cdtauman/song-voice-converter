@@ -20,6 +20,7 @@ from svc_app.engine_client import EngineClient
 class SettingsScreen(QWidget):
     theme_changed = Signal(str)
     advanced_changed = Signal(bool)
+    update_requested = Signal()
 
     def __init__(self, client: EngineClient) -> None:
         super().__init__()
@@ -50,12 +51,14 @@ class SettingsScreen(QWidget):
         self.cache_gb.setRange(0.0, 500.0)
         self.cache_gb.setSuffix(" GB")
         self.downloads = QCheckBox("אפשר הורדה אוטומטית של מודלים חסרים")
+        self.updates = QCheckBox("בדוק עדכונים אוטומטית")
         self.advanced = QCheckBox("הצג כברירת מחדל את בקרות המצב המתקדם")
         form.addRow("איכות ברירת מחדל:", self.quality)
         form.addRow("ערכת צבעים:", self.theme)
         form.addRow("עוצמת יעד:", self.target_lufs)
         form.addRow("מכסת מטמון:", self.cache_gb)
         form.addRow("הורדות:", self.downloads)
+        form.addRow("עדכונים:", self.updates)
         form.addRow("מצב מתקדם:", self.advanced)
         root.addLayout(form)
         root.addStretch()
@@ -63,6 +66,9 @@ class SettingsScreen(QWidget):
         save.setProperty("primary", True)
         save.clicked.connect(self.save)
         root.addWidget(save)
+        check_update = QPushButton("בדוק עדכון עכשיו")
+        check_update.clicked.connect(self.update_requested)
+        root.addWidget(check_update)
 
     def refresh(self) -> None:
         settings = self.client.settings()
@@ -72,6 +78,7 @@ class SettingsScreen(QWidget):
         self.target_lufs.setValue(float(settings.get("target_lufs", -14.0)))
         self.cache_gb.setValue(float(settings.get("keep_cache_gb", 20.0)))
         self.downloads.setChecked(bool(settings.get("allow_model_downloads", True)))
+        self.updates.setChecked(bool(settings.get("check_updates", True)))
         self.theme.setCurrentIndex(max(0, self.theme.findData(settings.get("theme", "system"))))
         self.advanced.setChecked(bool(settings.get("advanced_mode", False)))
 
@@ -81,6 +88,7 @@ class SettingsScreen(QWidget):
             target_lufs=self.target_lufs.value(),
             keep_cache_gb=self.cache_gb.value(),
             allow_model_downloads=self.downloads.isChecked(),
+            check_updates=self.updates.isChecked(),
             theme=str(self.theme.currentData()),
             advanced_mode=self.advanced.isChecked(),
         )

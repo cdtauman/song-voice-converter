@@ -2,6 +2,22 @@
 
 ---
 
+## 19.8.2026 — Phase 11: אריזה, installer ועדכונים
+
+הדוח המלא: [phase-reports/phase-11.md](phase-reports/phase-11.md).
+
+- נבנו runtime עצמאי ושני מתקיני Inno עבריים — online ו־offline — עם קיצורי דרך,
+  הסרה מלאה ו־GUI smoke ללא חלון טרמינל.
+- נוסף first-run שמזהה backend, מאמת Torch/ffmpeg ומתקין רק מודלי ליבה מתירי
+  הפצה; נוסף updater טרנזקציוני עם SHA-256, staging, rollback ומניעת Zip Slip.
+- ffmpeg ננעל ל־BtbN LGPL shared ונבדק בבנייה. `env-bench` ומנועי benchmark
+  מוחרגים מפורשות מה־distribution.
+- נוסף release workflow לתגיות עם clean-machine install/smoke/uninstall, offline
+  payload, artifact checksums וחתימה אופציונלית. תעודה, mirror פרטי וקאבר שמע
+  אמיתי נשארו חסמים חיצוניים מתועדים.
+
+---
+
 ## 19.8.2026 — Phase 10: מצב מתקדם ומעבדת benchmark
 
 הדוח המלא: [phase-reports/phase-10.md](phase-reports/phase-10.md).

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "ffmpeg": {
+    "project": "BtbN/FFmpeg-Builds",
+    "variant": "win64-lgpl-shared",
+    "release_id": 372453964,
+    "asset_id": 519628215,
+    "asset_updated_at": "2026-08-18T15:25:02Z",
+    "url": "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/519628215",
+    "sha256": "df45248120867ad9b2a17ba80633c642dff8cbabd5156ab400c87f8dc3d3f4ca",
+    "size_bytes": 67704853,
+    "license": "LGPL-2.1-or-later",
+    "required_filters": ["alimiter", "acompressor", "loudnorm"]
+  }
+}

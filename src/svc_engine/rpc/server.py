@@ -43,6 +43,10 @@ class Server:
             "projects.save": self._projects_save,
             "settings.get": self._settings_get,
             "settings.save": self._settings_save,
+            "provision.status": self._provision_status,
+            "provision.run": self._provision_run,
+            "updates.check": self._updates_check,
+            "updates.stage": self._updates_stage,
             "voices.list": self._voices_list,
             "voices.import": self._voices_import,
             "voices.remove": self._voices_remove,
@@ -184,6 +188,49 @@ class Server:
             raise ValueError("invalid cache size")
         save_settings(settings, self._paths)
         return dataclasses.asdict(settings)
+
+    def _provisioner(self):  # type: ignore[no-untyped-def]
+        from svc_engine.provisioning import Provisioner
+
+        return Provisioner(self._paths)
+
+    def _provision_status(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._provisioner().status().to_dict()
+
+    def _provision_run(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._provisioner().run(
+            lambda fraction, message: self._emit(
+                "progress", {"fraction": fraction, "message_he": message}
+            )
+        ).to_dict()
+
+    def _updates_check(self, params: dict[str, Any]) -> dict[str, Any]:
+        from svc_engine import __version__
+        from svc_engine.updates import DEFAULT_MANIFEST_URL, UpdateManager
+
+        manifest_url = str(params.get("manifest_url") or DEFAULT_MANIFEST_URL)
+        release = UpdateManager(self._paths.root / "updates").check(manifest_url, __version__)
+        return {
+            "available": release is not None,
+            "release": release.to_dict() if release is not None else None,
+        }
+
+    def _updates_stage(self, params: dict[str, Any]) -> dict[str, Any]:
+        from svc_engine.updates import Release, UpdateManager
+
+        raw = params.get("release")
+        if not isinstance(raw, dict):
+            raise ValueError("release must be an object")
+        release = Release.from_dict(raw)
+        manager = UpdateManager(self._paths.root / "updates")
+        staged = manager.stage(
+            release,
+            on_progress=lambda fraction: self._emit(
+                "progress",
+                {"fraction": fraction, "message_he": "מורידים עדכון מאומת…"},
+            ),
+        )
+        return {"staged": str(staged), "version": release.version, "restart_required": True}
 
     def _voices_list(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         from svc_engine.voices import VoiceLibrary

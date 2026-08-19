@@ -1435,6 +1435,11 @@ cache חוסך זמן בהרצה שנייה; אין קבצים זמניים ית
 **Definition of Done:** התקנה נקייה → קאבר ראשון עובד, בלי שהמשתמש ראה טרמינל ולו פעם אחת;
 הסרה מנקה הכול; installer מלא (offline) קיים גם הוא.
 
+**דוח סיום:** [docs/phase-reports/phase-11.md](docs/phase-reports/phase-11.md).
+ה־runtime, שני המתקינים העבריים, first-run, updater עם checksum/rollback ו־CI
+הושלמו. חתימה, mirror פרטי וקבלת קאבר אמיתי על VM נקי נשארו חסומים רק על
+תעודה, credentials וחומרי קבלה חיצוניים.
+
 ---
 
 ## Phase 12 — בדיקות סופיות, תיעוד ושחרור v1.0

@@ -43,6 +43,7 @@ class EngineClient:
 
     def __init__(self, python_executable: str | None = None, cwd: Path | None = None) -> None:
         self._exe = python_executable or sys.executable
+        self._frozen = bool(getattr(sys, "frozen", False)) and python_executable is None
         self._cwd = cwd
         self._proc: subprocess.Popen[str] | None = None
         self._ids = itertools.count(1)
@@ -53,8 +54,11 @@ class EngineClient:
         if self._proc is not None and self._proc.poll() is None:
             return
         try:
+            command = [self._exe, "--engine"] if self._frozen else [
+                self._exe, "-m", "svc_engine.cli", "serve"
+            ]
             self._proc = subprocess.Popen(
-                [self._exe, "-m", "svc_engine.cli", "serve"],
+                command,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
@@ -186,6 +190,20 @@ class EngineClient:
 
     def save_settings(self, **values: Any) -> dict[str, Any]:
         return dict(self.call("settings.save", **values))
+
+    def provisioning_status(self) -> dict[str, Any]:
+        return dict(self.call("provision.status"))
+
+    def provision(self, on_event: EventCallback | None = None) -> dict[str, Any]:
+        return dict(self.call("provision.run", on_event=on_event))
+
+    def check_for_update(self) -> dict[str, Any]:
+        return dict(self.call("updates.check"))
+
+    def stage_update(
+        self, release: dict[str, Any], on_event: EventCallback | None = None
+    ) -> dict[str, Any]:
+        return dict(self.call("updates.stage", release=release, on_event=on_event))
 
     def voices(self) -> list[dict[str, Any]]:
         return list(self.call("voices.list"))

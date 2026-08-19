@@ -1,6 +1,6 @@
 # ארכיטקטורה ותכנון UX
 
-**עודכן:** 19 באוגוסט 2026 — Phase 8.
+**עודכן:** 19 באוגוסט 2026 — Phase 11.
 
 ---
 
@@ -522,3 +522,18 @@ voices/<voice_id>/
 - היציאה היחידה לאינטרנט: הורדת מודלים ובדיקת עדכונים — שתיהן ניתנות לכיבוי.
 - הלוגים לא מכילים תוכן שמע, רק שמות קבצים ומדדים.
 - מסך "פרטיות" בהגדרות שמסביר בדיוק את זה בעברית.
+
+---
+
+## 11. אריזה ועדכונים
+
+PyInstaller בונה `onedir` עם Python 3.11, Torch/Intel XPU, Qt ו־ffmpeg LGPL
+מוטבעים. `SongVoiceLauncher.exe` הוא נקודת הכניסה היציבה; הוא מחיל update ממתין
+לפני פתיחת `SongVoice.exe`. אותו executable מפעיל במצבים פנימיים את שרת המנוע
+ואת worker האימון, ולכן אף subprocess אינו תלוי ב־`python.exe` חיצוני או מציג console.
+
+הפעלה ראשונה כותבת `setup-complete.json` רק אחרי זיהוי backend, אימות runtime,
+התקנת מודלי הליבה לפי size+SHA והרצת health. ה־offline installer מזין מראש את
+אותו model store. updater מוריד manifest ו־ZIP ב־HTTPS, מאמת size+SHA, מחלץ לתיקיית
+staging בטוחה, מגבה קבצים מוחלפים ושומר transaction receipt; כל כשל מחזיר את
+ההתקנה למצב הקודם. `env-bench` וכל מנוע benchmark מוחרגים מה־spec ומה־installer.
