@@ -225,6 +225,9 @@ Phase 10 מממשת את הגבול כתיקיית coordinator אחת שבתוכ
 נדרשת כי מטריצות Torch/NumPy של המנועים סותרות זו את זו. הליבה מפעילה רק פקודת
 subprocess שמחזירה WAV; אין import, dependency או checkpoint משותף. Hatch אורז
 במפורש רק `src/svc_engine` ו־`src/svc_app`, וכל `runtimes/` מוחרג מ־Git.
+כל variant מוכנס ב־Windows ל־Job Object עם `KILL_ON_JOB_CLOSE`: timeout מסיים
+וממתין לכל העץ, ו־RAM/VRAM מסוכמים מכל ה־PIDs ב־Job. ב־POSIX משמשת session/process
+group נפרדת עם גילוי descendants כ־fallback.
 
 ---
 

@@ -13,7 +13,7 @@
 |---|---|
 | `tuning/config.py` | 11 בקרות advanced מאומתות: RVC, F0, playback, ambience, loudness ותיקוני PostFX; הסבר עברי ⓘ לכל פרמטר |
 | `tuning/optimizer.py` | חיפוש bounded של ארבעה מועמדים על Preview, כולל baseline ידני, score שקוף ושמירת כל התוצאות |
-| `benchmark/` | schema TOML/JSON, runner תהליכים, repetitions/timeout, זמן, peak RAM/VRAM, כשלים, CSV, HTML, audio/logs ו־manifest שחזורי |
+| `benchmark/` | schema TOML/JSON, runner עם Windows Job Object, timeout לכל עץ התהליכים, RAM/VRAM מצטברים, CSV, HTML, audio/logs ו־manifest שחזורי |
 | GUI | פאנל מתקדם באשף; כרטיס tuning בתצוגה המקדימה; מסך “מעבדת השוואה” עם טבלה ונגן רב־גרסאות מסונכרן במצב עיוור |
 | workflow/RPC | advanced config נכנס לבקשת job, ל־cache key ול־metadata; full cover ממשיך עם המנצח שנבחר ב־Preview |
 | `env-bench/` | coordinator מבודד, source pins, bootstrap פר־מנוע, adapter WAV אחיד ושער isolation |
@@ -58,9 +58,10 @@
 
 | אימות | תוצאה |
 |---|---|
-| `python -m pytest -q` | ✅ 559 נאספו · 553 עברו · 6 דולגו לפי תנאי חומרה קיימים |
+| `python -m pytest -q` | ✅ 561 נאספו · 555 עברו · 6 דולגו לפי תנאי חומרה קיימים |
+| בדיקת timeout לעץ variant | ✅ parent הוליד child שהקצה 96 MiB; timeout חיסל והמתין לילד, ו־peak RAM המצטבר כלל אותו |
 | `python -m ruff check src tests tools env-bench` | ✅ עבר |
-| `python -m mypy src` | ✅ 131 קובצי מקור, 0 שגיאות |
+| `python -m mypy src` | ✅ 132 קובצי מקור, 0 שגיאות |
 | `python tools/bench_phase10.py` | ✅ 4/4 ריצות; CSV/HTML/manifest/audio; telemetry ומיפוי עיוור; objective selector 5/5 מול baseline |
 | `python tools/bench_gui.py` | ✅ 17/17 מסכים, כולל advanced ו־benchmark; `all_rtl=true`; contact sheet נבדק חזותית ללא חיתוך |
 | `python env-bench/verify_isolation.py` | ✅ אין אזכור מנוע benchmark ב־`src`; build מבודד; source pins מוכנים |

@@ -17,6 +17,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from svc_engine.benchmark.process_tree import ProcessTree
 from svc_engine.benchmark.schema import ExperimentSpec, VariantSpec
 
 __all__ = ["BenchmarkRunner"]
@@ -37,28 +38,35 @@ class RunResult:
 
 
 class _ResourceSampler:
-    def __init__(self, process: subprocess.Popen[str]) -> None:
-        self.process = process
+    def __init__(self, tree: ProcessTree) -> None:
+        self.tree = tree
         self.peak_ram_mb = 0.0
         self.peak_vram_mb: float | None = None
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._sample, daemon=True)
 
     def start(self) -> None:
+        self._collect()
         self._thread.start()
 
     def stop(self) -> None:
+        self._collect()
         self._stop.set()
         self._thread.join(timeout=1.0)
 
     def _sample(self) -> None:
         while not self._stop.wait(0.1):
-            ram = _working_set_mb(self.process.pid)
-            if ram is not None:
-                self.peak_ram_mb = max(self.peak_ram_mb, ram)
-            vram = _nvidia_vram_mb(self.process.pid)
-            if vram is not None:
-                self.peak_vram_mb = max(self.peak_vram_mb or 0.0, vram)
+            self._collect()
+
+    def _collect(self) -> None:
+        pids = self.tree.pids()
+        ram_values = [_working_set_mb(pid) for pid in pids]
+        measured = [value for value in ram_values if value is not None]
+        if measured:
+            self.peak_ram_mb = max(self.peak_ram_mb, sum(measured))
+        vram = _nvidia_vram_mb(pids)
+        if vram is not None:
+            self.peak_vram_mb = max(self.peak_vram_mb or 0.0, vram)
 
 
 class BenchmarkRunner:
@@ -101,6 +109,7 @@ class BenchmarkRunner:
         ]
         started = time.perf_counter()
         process: subprocess.Popen[str] | None = None
+        tree: ProcessTree | None = None
         error: str | None = None
         status = "failed"
         exit_code: int | None = None
@@ -109,7 +118,7 @@ class BenchmarkRunner:
         stdout = ""
         stderr = ""
         try:
-            process = subprocess.Popen(
+            tree = ProcessTree.start(
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -118,13 +127,14 @@ class BenchmarkRunner:
                 errors="replace",
                 shell=False,
             )
-            sampler = _ResourceSampler(process)
+            process = tree.process
+            sampler = _ResourceSampler(tree)
             sampler.start()
             try:
                 stdout, stderr = process.communicate(timeout=spec.timeout_seconds)
             except subprocess.TimeoutExpired:
-                process.kill()
-                stdout, stderr = process.communicate()
+                tree.terminate()
+                stdout, stderr = process.communicate(timeout=5)
                 error = f"timeout after {spec.timeout_seconds:g}s"
             finally:
                 sampler.stop()
@@ -134,8 +144,11 @@ class BenchmarkRunner:
                 status = "ok"
             elif error is None:
                 error = "command did not produce the declared WAV output"
-        except OSError as exc:
+        except (OSError, subprocess.TimeoutExpired) as exc:
             error = str(exc)
+        finally:
+            if tree is not None:
+                tree.close()
         seconds = time.perf_counter() - started
         log = logs_dir / f"{variant.variant_id}-{repetition}.log"
         log.write_text(
@@ -313,7 +326,9 @@ def _working_set_mb(pid: int) -> float | None:
         return None
 
 
-def _nvidia_vram_mb(pid: int) -> float | None:
+def _nvidia_vram_mb(pids: set[int]) -> float | None:
+    if not pids:
+        return None
     executable = shutil.which("nvidia-smi")
     if executable is None:
         return None
@@ -335,7 +350,7 @@ def _nvidia_vram_mb(pid: int) -> float | None:
     found = False
     for line in result.stdout.splitlines():
         parts = [part.strip() for part in line.split(",")]
-        if len(parts) == 2 and parts[0] == str(pid):
+        if len(parts) == 2 and parts[0].isdigit() and int(parts[0]) in pids:
             try:
                 total += float(parts[1])
                 found = True

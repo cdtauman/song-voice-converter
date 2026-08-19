@@ -219,6 +219,8 @@ svc-bench run experiments/sep_models.yaml --out results/2026-08-20/
 `report.html`, `manifest.json`, `audio/` ו־`logs/`. ה־manifest נועל SHA-256 לקלט,
 פקודות, הגדרות, רישיונות, סביבת מנוע, host ו־seed; כל ריצה שומרת זמן, peak RAM,
 peak VRAM כשזמין, exit code וכשל. הדוח כולל נגן עיוור ששומר את נקודת הזמן במעבר.
+בדיקת process-tree מפעילה adapter-הורה שמוליד ילד בעל הקצאת RAM: timeout חייב
+להעלים גם את הילד, וה־peak השמור חייב לכלול את ההקצאה שלו.
 
 `python tools/bench_phase10.py` הוא gate מכני ללא מודלים: שתי גרסאות × שתי חזרות,
 כל ארבעת artifacts, מיפוי עיוור, telemetry, ארבעה מועמדי tuning וחמש בדיקות שבהן
