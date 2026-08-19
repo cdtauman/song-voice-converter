@@ -1,4 +1,4 @@
-"""Phase-8 visual/RTL gate for every simple-mode screen.
+"""Phase-8/9 visual and RTL gate for the desktop screens and training wizard.
 
 Run on Windows (the offscreen Qt plugin has no system fonts):
 
@@ -21,6 +21,7 @@ from PySide6.QtWidgets import QApplication, QWidget  # noqa: E402
 
 from svc_app.design import Theme, apply_theme  # noqa: E402
 from svc_app.main import MainWindow  # noqa: E402
+from svc_app.screens.voices import TrainingWizardDialog  # noqa: E402
 
 RESULTS = REPO / "benchmark" / "results" / "gui"
 
@@ -65,6 +66,9 @@ class DemoClient:
 
     def cancel_current(self) -> None:
         return None
+
+    def training_sessions(self) -> list[dict[str, Any]]:
+        return []
 
 
 def _rtl_tree(widget: QWidget) -> bool:
@@ -128,9 +132,65 @@ def main() -> int:
             }
         )
 
+    training = TrainingWizardDialog(DemoClient())  # type: ignore[arg-type]
+    training.show()
+    training.recordings = ["C:/הקלטות/קול-01.wav", "C:/הקלטות/קול-02.wav"]
+    training.files.addItems(["קול-01.wav", "קול-02.wav"])
+    training.name.setText("הקול שלי")
+    training.consent.setChecked(True)
+    quality_session = {
+        "session_id": "visual-session",
+        "stage": "quality",
+        "quality": {
+            "can_train": True,
+            "summary_he": "החומר מוכן לאימון: 16.4 דקות פעילות.",
+            "issues": [
+                {
+                    "message_he": "נמצא מעט רעש רקע.",
+                    "action_he": "הניקוי האוטומטי יטפל בו לפני האימון.",
+                }
+            ],
+        },
+    }
+    training._quality_ready(quality_session)
+    states = [
+        (0, "recordings"),
+        (1, "quality"),
+        (2, "cleaning"),
+        (3, "training"),
+        (4, "ready"),
+    ]
+    for index, name in states:
+        training.pages.setCurrentIndex(index)
+        if index == 2:
+            training.clean_progress.setRange(0, 100)
+            training.clean_progress.setValue(68)
+            training.clean_status.setText("חותכים שקטים ומכינים מקטעים…")
+        elif index == 3:
+            training._render_training(
+                {
+                    "stage": "paused",
+                    "progress": 0.42,
+                    "message_he": "האימון נעצר ב-epoch 84 מתוך 200.",
+                    "estimated_remaining_seconds": 7200,
+                }
+            )
+        app.processEvents()
+        image = training.grab().toImage()
+        captures.append((f"training-{name}", image))
+        report.append(
+            {
+                "screen": f"training-{name}",
+                "rtl": _rtl_tree(training.pages.widget(index)),
+                "width": image.width(),
+                "height": image.height(),
+            }
+        )
+
     thumb_width = 472
     thumb_height = 304
-    sheet = QImage(thumb_width * 2, thumb_height * 5, QImage.Format.Format_RGB32)
+    rows = (len(captures) + 1) // 2
+    sheet = QImage(thumb_width * 2, thumb_height * rows, QImage.Format.Format_RGB32)
     sheet.fill(QColor("white"))
     painter = QPainter(sheet)
     for position, (_name, image) in enumerate(captures):
@@ -142,10 +202,10 @@ def main() -> int:
         )
         painter.drawImage((position % 2) * thumb_width, (position // 2) * thumb_height, thumbnail)
     painter.end()
-    sheet.save(str(RESULTS / "phase8-contact-sheet.png"))
+    sheet.save(str(RESULTS / "phase9-contact-sheet.png"))
 
     payload = {
-        "phase": 8,
+        "phase": 9,
         "screens": report,
         "all_rtl": all(item["rtl"] for item in report),
         "result": "pass" if all(item["rtl"] for item in report) else "fail",
@@ -154,6 +214,7 @@ def main() -> int:
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+    training.close()
     window.close()
     return 0 if payload["result"] == "pass" else 1
 

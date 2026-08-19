@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeyEvent, QMouseEvent
+from PySide6.QtGui import QKeyEvent, QMouseEvent, QPixmap
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
 
 
@@ -18,8 +18,20 @@ class VoiceCard(QFrame):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         layout = QHBoxLayout(self)
+        avatar = str(voice.get("avatar_path") or "")
         badge = QLabel("●")
+        badge.setFixedSize(56, 56)
         badge.setStyleSheet("font-size: 24px;")
+        if avatar:
+            pixmap = QPixmap(avatar)
+            if not pixmap.isNull():
+                badge.setPixmap(
+                    pixmap.scaled(
+                        badge.size(),
+                        Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
         text = QVBoxLayout()
         name = QLabel(str(voice.get("display_name") or self.voice_id))
         name.setStyleSheet("font-size: 17px; font-weight: 700;")

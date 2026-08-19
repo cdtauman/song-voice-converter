@@ -46,6 +46,15 @@ class Server:
             "voices.list": self._voices_list,
             "voices.import": self._voices_import,
             "voices.remove": self._voices_remove,
+            "voices.update": self._voices_update,
+            "voices.health": self._voices_health,
+            "training.create": self._training_create,
+            "training.list": self._training_list,
+            "training.inspect": self._training_inspect,
+            "training.prepare": self._training_prepare,
+            "training.start": self._training_start,
+            "training.status": self._training_status,
+            "training.pause": self._training_pause,
             "covers.preview": self._covers_preview,
             "covers.run": self._covers_run,
             "covers.resume": self._covers_resume,
@@ -219,6 +228,65 @@ class Server:
 
         VoiceLibrary(self._paths).remove(str(params["voice_id"]))
         return {"removed": True}
+
+    def _voices_update(self, params: dict[str, Any]) -> dict[str, Any]:
+        from svc_engine.voices import VoiceLibrary
+
+        entry = VoiceLibrary(self._paths).update(
+            str(params["voice_id"]),
+            display_name=(str(params["display_name"]) if params.get("display_name") else None),
+            sample=(str(params["sample"]) if params.get("sample") else None),
+            avatar=(str(params["avatar"]) if params.get("avatar") else None),
+        )
+        return {"id": entry.voice_id, "display_name": entry.manifest.display_name}
+
+    def _voices_health(self, params: dict[str, Any]) -> dict[str, Any]:
+        from svc_engine.voices import VoiceLibrary
+
+        entry = VoiceLibrary(self._paths).refresh_health(str(params["voice_id"]))
+        return {
+            "id": entry.voice_id,
+            "usable": entry.manifest.usable and entry.profile_path is not None,
+            "health": entry.manifest.health.to_dict(),
+            "health_note_he": entry.manifest.health.note_he,
+        }
+
+    def _trainer(self):  # type: ignore[no-untyped-def]
+        from svc_engine.training import TrainingCoordinator
+
+        return TrainingCoordinator(self._paths)
+
+    def _training_create(self, params: dict[str, Any]) -> dict[str, Any]:
+        recordings = params.get("recordings")
+        if not isinstance(recordings, list):
+            raise ValueError("recordings must be a list")
+        return self._trainer().create(
+            str(params.get("display_name") or "קול חדש"),
+            [str(path) for path in recordings],
+            bool(params.get("consent_confirmed")),
+            str(params.get("consent_note") or ""),
+            int(params.get("total_epochs") or 200),
+        )
+
+    def _training_list(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        return self._trainer().list()
+
+    def _training_inspect(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._trainer().inspect(str(params["session_id"]))
+
+    def _training_prepare(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._trainer().prepare(
+            str(params["session_id"]), separate_mix=bool(params.get("separate_mix", True))
+        )
+
+    def _training_start(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._trainer().start(str(params["session_id"]))
+
+    def _training_status(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._trainer().status(str(params["session_id"]))
+
+    def _training_pause(self, params: dict[str, Any]) -> dict[str, Any]:
+        return self._trainer().pause(str(params["session_id"]))
 
     def _covers_preview(self, params: dict[str, Any]) -> dict[str, Any]:
         return self._run_cover(params, preview=True)

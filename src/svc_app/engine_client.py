@@ -211,6 +211,48 @@ class EngineClient:
     def remove_voice(self, voice_id: str) -> None:
         self.call("voices.remove", voice_id=voice_id)
 
+    def update_voice(self, voice_id: str, **values: Any) -> dict[str, Any]:
+        return dict(self.call("voices.update", voice_id=voice_id, **values))
+
+    def check_voice(self, voice_id: str) -> dict[str, Any]:
+        return dict(self.call("voices.health", voice_id=voice_id))
+
+    def create_training(
+        self,
+        display_name: str,
+        recordings: list[str],
+        *,
+        consent_confirmed: bool,
+        consent_note: str,
+    ) -> dict[str, Any]:
+        return dict(
+            self.call(
+                "training.create",
+                display_name=display_name,
+                recordings=recordings,
+                consent_confirmed=consent_confirmed,
+                consent_note=consent_note,
+            )
+        )
+
+    def training_sessions(self) -> list[dict[str, Any]]:
+        return list(self.call("training.list"))
+
+    def inspect_training(self, session_id: str) -> dict[str, Any]:
+        return dict(self.call("training.inspect", session_id=session_id))
+
+    def prepare_training(self, session_id: str, separate_mix: bool = True) -> dict[str, Any]:
+        return dict(self.call("training.prepare", session_id=session_id, separate_mix=separate_mix))
+
+    def start_training(self, session_id: str) -> dict[str, Any]:
+        return dict(self.call("training.start", session_id=session_id))
+
+    def training_status(self, session_id: str) -> dict[str, Any]:
+        return dict(self.call("training.status", session_id=session_id))
+
+    def pause_training(self, session_id: str) -> dict[str, Any]:
+        return dict(self.call("training.pause", session_id=session_id))
+
     def preview_cover(
         self,
         *,

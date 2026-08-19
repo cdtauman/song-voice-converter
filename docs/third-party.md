@@ -22,7 +22,22 @@
 | [`python-stretch`](https://github.com/gregogiudici/python-stretch) | 0.3.1 | MIT | הזזת גובה (Signalsmith Stretch) | 1 — שימוש ישיר (Phase 4) |
 | [`torchfcpe`](https://pypi.org/project/torchfcpe/) | 0.0.4 | MIT | זיהוי F0 מהיר | 1 — שימוש ישיר (Phase 3) |
 | [`PySide6`](https://doc.qt.io/qtforpython-6/) | 6.11.1 | LGPL-3.0 (קישור דינמי) | ממשק Windows, RTL, drag/drop ו־Qt Multimedia | 1 — שימוש ישיר (Phase 8) |
+| [`noisereduce`](https://github.com/timsainb/noisereduce) | 3.0.3 | MIT | תלות runtime של שלב ה-preprocess ב-Applio; SongVoice מבצע את הניקוי לפניו | 1 — שימוש ישיר (Phase 9) |
+| [`tensorboard`](https://github.com/tensorflow/tensorboard) | 2.21.0 | Apache-2.0 | כתיבת מדדי האימון של Applio | 1 — שימוש ישיר (Phase 9) |
 | `ffmpeg` | build חיצוני | LGPL | קליטה, ייצוא, `loudnorm`/`alimiter`/`acompressor` | 1 — קישור דינמי, נקרא כתהליך |
+
+### 1.2 עטיפת מנגנון האימון (דרגה 3)
+
+| מה | ריפו + commit | נקודות הכניסה שנצרכות | צורת שילוב | רישיון |
+|----|----------------|-------------------------|------------|--------|
+| אימון RVC, checkpoints ו-index | [IAHispano/Applio](https://github.com/IAHispano/Applio) @ `085197e738ce9dd4c0bae1e0a74df5de25b89444` | `rvc/train/preprocess/preprocess.py`, `rvc/train/extract/extract.py`, `rvc/train/train.py`, `rvc/train/process/extract_index.py` | ארכיון מקור של commit נעול יורד לנתוני האפליקציה, מאומת ב-SHA-256 `648c6322…9807`, ומופעל כתהליך חיצוני; אף קובץ Applio לא הועתק לריפו | **MIT** |
+
+Applio נבחר כי הוא מקור הייחוס שנקבע מראש ב-[reuse-policy.md](reuse-policy.md) והוא
+כבר מממש preprocess, חילוץ RMVPE/ContentVec, חידוש מ-checkpoint, export ו-index.
+SongVoice מוסיף מסביבו את חוזה ההסכמה, בדיקת האיכות, ניקוי החומר, session עמיד,
+התקדמות/ETA, פרסום אטומי לספריית הקולות וחישוב פרופיל המנעד. המאמן רץ על CUDA
+כשזמין במסלול Applio; במטריצה הנוכחית Intel XPU משתמש בגיבוי CPU, משום שהמאמן
+של Applio אינו מצהיר תמיכת XPU. לא שונתה ארכיטקטורת המודל ולא הוכנס קוד אימון עצמי.
 
 ### 1.3 קוד שהועתק לריפו (דרגה 4 — הכנסת תת-קבוצה)
 
@@ -81,6 +96,8 @@
 | `sep_melband_kim` | [KimberleyJSN/melbandroformer](https://huggingface.co/KimberleyJSN/melbandroformer) | **MIT** | ✅ כן |
 | `f0_rmvpe` | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) | **MIT** | ✅ כן |
 | `content_hubert` | [lj1995/VoiceConversionWebUI](https://huggingface.co/lj1995/VoiceConversionWebUI) — `hubert_base.pt`, sha256 נעול (Phase 5) | **MIT** | ✅ כן |
+| `rvc_training_runtime` | [IAHispano/Applio Resources](https://huggingface.co/IAHispano/Applio) @ `774d3d1f…f293` — ContentVec + RMVPE | **MIT** | ✅ כן |
+| `titan_medium_48k` | [blaise-tk/TITAN](https://huggingface.co/blaise-tk/TITAN) @ `cb72bb5b…25f7` — generator + discriminator, 48kHz | **Apache-2.0** | ✅ כן |
 | `sep_melband_kim_ft2` | [pcunwa/Kim-Mel-Band-Roformer-FT](https://huggingface.co/pcunwa/Kim-Mel-Band-Roformer-FT) | אין הצהרה | ⚠️ פרטי בלבד |
 | `sep_bs_roformer_1297` | UVR model repo | אין הצהרה | ⚠️ פרטי בלבד |
 | `karaoke_aufr33_viperx` | UVR model repo | אין הצהרה | ⚠️ פרטי בלבד |
@@ -107,7 +124,7 @@
 | מקור | מה נבדק ב-Phase 2 | התוצאה |
 |------|---------------------|---------|
 | [mason369/AI-RVC](https://github.com/mason369/AI-RVC) (MIT) | סדר צינור ההפרדה, DeReverb, ניהול מודלים | הסדר אומץ כרעיון; הקוד לא — הוא עוטף את אותה `audio-separator` שאנחנו עוטפים ישירות |
-| [IAHispano/Applio](https://github.com/IAHispano/Applio) (MIT) | ניהול והורדת מודלים | לא נדרש כאן; רלוונטי ל-Phase 9 (אימון) |
+| [IAHispano/Applio](https://github.com/IAHispano/Applio) (MIT) | ניהול מודלים ואימון | **נעטף ב-Phase 9** — commit וקבצים מדויקים בסעיף 1.2 |
 | [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) (MIT) | קוד ה-RMVPE (`infer/rmvpe.py`) | **נלקח ב-Phase 3** — ראה §1.3. קוד ה-RVC inference עצמו עדיין ל-Phase 5 |
 
 ---
@@ -118,5 +135,5 @@
 |------|----------|--------------------|
 | Phase 3 | ✅ **נעשה** — משקולות RMVPE (§2) + קוד RMVPE (§1.3) + `torchfcpe` (§1.1) | 1 + 4 |
 | Phase 5 | ✅ **נעשה** — רשת inference של RVC v2 (§1.3) + משקולות HuBERT (§2). התלויות `faiss-cpu`/`transformers` ננעלות ב-re-lock (ראה phase-5.md) | 4 + 1 |
-| Phase 9 | מנגנון האימון של Applio, מודל בסיס TITAN (Apache-2.0) | 3–4 |
+| Phase 9 | ✅ **נעשה** — Applio במתאם תהליך נעול + TITAN Medium 48k + ContentVec/RMVPE נעולים | 3 + 1 |
 | Phase 10 | Seed-VC (GPL-3.0) | **סביבה מבודדת בלבד — לעולם לא בליבה** |

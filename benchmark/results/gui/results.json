@@ -1,5 +1,5 @@
 {
-  "phase": 8,
+  "phase": 9,
   "screens": [
     {
       "screen": "wizard-song",
@@ -60,6 +60,36 @@
       "rtl": true,
       "width": 1770,
       "height": 1140
+    },
+    {
+      "screen": "training-recordings",
+      "rtl": true,
+      "width": 1140,
+      "height": 900
+    },
+    {
+      "screen": "training-quality",
+      "rtl": true,
+      "width": 1140,
+      "height": 900
+    },
+    {
+      "screen": "training-cleaning",
+      "rtl": true,
+      "width": 1140,
+      "height": 900
+    },
+    {
+      "screen": "training-training",
+      "rtl": true,
+      "width": 1140,
+      "height": 900
+    },
+    {
+      "screen": "training-ready",
+      "rtl": true,
+      "width": 1140,
+      "height": 900
     }
   ],
   "all_rtl": true,

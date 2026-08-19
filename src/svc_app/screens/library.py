@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QFormLayout,
     QGridLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -21,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from svc_app.engine_client import EngineCallError, EngineClient
+from svc_app.screens.voices import TrainingWizardDialog
 from svc_app.widgets import VoiceCard
 
 
@@ -40,14 +43,23 @@ class VoiceLibraryScreen(QWidget):
         subtitle.setObjectName("Subtitle")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
-        add = QPushButton("הוסף קול מקובץ ZIP")
-        add.setProperty("primary", True)
+        actions = QVBoxLayout()
+        train = QPushButton("צור קול מהקלטות")
+        train.setProperty("primary", True)
+        train.clicked.connect(self._train)
+        add = QPushButton("ייבא קול מקובץ ZIP")
         add.clicked.connect(self._import)
+        self.resume = QPushButton("המשך אימון שנעצר")
+        self.resume.clicked.connect(self._resume_training)
+        self.resume.hide()
+        actions.addWidget(train)
+        actions.addWidget(add)
+        actions.addWidget(self.resume)
         header.addLayout(title_box, 1)
-        header.addWidget(add)
+        header.addLayout(actions)
         root.addLayout(header)
         self.container = QWidget()
-        self.cards = QVBoxLayout(self.container)
+        self.cards = QGridLayout(self.container)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(self.container)
@@ -58,6 +70,16 @@ class VoiceLibraryScreen(QWidget):
             voices = self.client.voices()
         except Exception:
             voices = []
+        try:
+            sessions = self.client.training_sessions()
+        except Exception:
+            sessions = []
+        self._resumable = [
+            session
+            for session in sessions
+            if str(session.get("stage")) not in {"ready", "recordings"}
+        ]
+        self.resume.setVisible(bool(self._resumable))
         while self.cards.count():
             item = self.cards.takeAt(0)
             widget = item.widget() if item is not None else None
@@ -66,23 +88,87 @@ class VoiceLibraryScreen(QWidget):
         if not voices:
             empty = QLabel("הספרייה עדיין ריקה. הוסף קול כדי ליצור קאבר ראשון.")
             empty.setProperty("muted", True)
-            self.cards.addWidget(empty)
-        for voice in voices:
+            self.cards.addWidget(empty, 0, 0, 1, 2)
+        for position, voice in enumerate(voices):
+            voice_id = str(voice.get("id") or "")
             row = QWidget()
-            row_layout = QHBoxLayout(row)
+            row.setProperty("card", True)
+            row_layout = QVBoxLayout(row)
             card = VoiceCard(voice)
+            controls = QHBoxLayout()
+            rename = QPushButton("שנה שם")
+            rename.clicked.connect(lambda _checked=False, selected=voice: self._rename(selected))
+            image = QPushButton("תמונה")
+            image.clicked.connect(
+                lambda _checked=False, selected_id=voice_id: self._image(selected_id)
+            )
+            sample = QPushButton("דוגמה")
+            sample.clicked.connect(lambda _checked=False, selected=voice: self._sample(selected))
+            health = QPushButton("בדוק")
+            health.clicked.connect(
+                lambda _checked=False, selected_id=voice_id: self._health(selected_id)
+            )
             remove = QPushButton("הסר")
             remove.setProperty("danger", True)
-            voice_id = str(voice.get("id") or "")
             remove.clicked.connect(
                 lambda _checked=False, selected_id=voice_id: self._remove(selected_id)
             )
+            for button in (rename, image, sample, health, remove):
+                controls.addWidget(button)
             row_layout.addWidget(card, 1)
-            row_layout.addWidget(remove)
-            self.cards.addWidget(row)
-        self.cards.addStretch()
+            row_layout.addLayout(controls)
+            self.cards.addWidget(row, position // 2, position % 2)
+        self.cards.setRowStretch((len(voices) + 1) // 2, 1)
         self.changed.emit(voices)
         return voices
+
+    def _train(self) -> None:
+        dialog = TrainingWizardDialog(self.client, self)
+        dialog.voice_ready.connect(self.refresh)
+        dialog.exec()
+        self.refresh()
+
+    def _resume_training(self) -> None:
+        if not getattr(self, "_resumable", None):
+            return
+        dialog = TrainingWizardDialog(self.client, self, self._resumable[0])
+        dialog.voice_ready.connect(self.refresh)
+        dialog.exec()
+        self.refresh()
+
+    def _rename(self, voice: dict[str, object]) -> None:
+        value, ok = QInputDialog.getText(
+            self,
+            "שינוי שם הקול",
+            "שם חדש:",
+            text=str(voice.get("display_name") or ""),
+        )
+        if ok and value.strip():
+            self.client.update_voice(str(voice.get("id") or ""), display_name=value.strip())
+            self.refresh()
+
+    def _image(self, voice_id: str) -> None:
+        image, _ = QFileDialog.getOpenFileName(self, "בחירת תמונה", "", "PNG (*.png)")
+        if image:
+            self.client.update_voice(voice_id, avatar=image)
+            self.refresh()
+
+    def _sample(self, voice: dict[str, object]) -> None:
+        existing = str(voice.get("sample_path") or "")
+        if existing and Path(existing).is_file():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(existing))
+            return
+        sample, _ = QFileDialog.getOpenFileName(
+            self, "בחירת דוגמת שמע", "", "Audio (*.wav *.flac *.mp3 *.m4a *.ogg)"
+        )
+        if sample:
+            self.client.update_voice(str(voice.get("id") or ""), sample=sample)
+            self.refresh()
+
+    def _health(self, voice_id: str) -> None:
+        result = self.client.check_voice(voice_id)
+        QMessageBox.information(self, "בדיקת תקינות", str(result.get("health_note_he") or ""))
+        self.refresh()
 
     def _import(self) -> None:
         archive, _ = QFileDialog.getOpenFileName(self, "בחירת חבילת קול", "", "ZIP (*.zip)")

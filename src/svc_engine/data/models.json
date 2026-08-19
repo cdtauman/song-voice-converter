@@ -289,6 +289,82 @@
           ]
         }
       ]
+    },
+
+    "rvc_training_runtime": {
+      "kind": "training",
+      "backend": "applio",
+      "engine_model": "contentvec",
+      "display_name_he": "משאבי אימון RVC",
+      "stems": [],
+      "sdr": null,
+      "license": {
+        "spdx": "MIT",
+        "verified_at": "2026-08-19",
+        "source": "huggingface.co/api/models/IAHispano/Applio revision 774d3d1f46102030638bc27d3a95cda6f68cf293; repository license MIT",
+        "note_he": "משקולות החילוץ של Applio; SHA-256 נעול ומותר להפצה."
+      },
+      "note_he": "ContentVec ו-RMVPE הנדרשים להכנת מאפייני האימון. קוד Applio עצמו נמשך מקומיט נעול ונבדק בנפרד.",
+      "files": [
+        {
+          "name": "training/applio/rvc/models/embedders/contentvec/pytorch_model.bin",
+          "size_bytes": 378342945,
+          "sha256": "d8dd400e054ddf4e6be75dab5a2549db748cc99e756a097c496c099f65a4854e",
+          "urls": [
+            "https://huggingface.co/IAHispano/Applio/resolve/774d3d1f46102030638bc27d3a95cda6f68cf293/Resources/embedders/contentvec/pytorch_model.bin"
+          ]
+        },
+        {
+          "name": "training/applio/rvc/models/embedders/contentvec/config.json",
+          "size_bytes": 1388,
+          "sha256": "2ddde063b795d38d9051a7215a092fecf4cfe148b54251e38de51d88d356898b",
+          "urls": [
+            "https://huggingface.co/IAHispano/Applio/resolve/774d3d1f46102030638bc27d3a95cda6f68cf293/Resources/embedders/contentvec/config.json"
+          ]
+        },
+        {
+          "name": "training/applio/rvc/models/predictors/rmvpe.pt",
+          "size_bytes": 181184272,
+          "sha256": "6d62215f4306e3ca278246188607209f09af3dc77ed4232efdd069798c4ec193",
+          "urls": [
+            "https://huggingface.co/IAHispano/Applio/resolve/774d3d1f46102030638bc27d3a95cda6f68cf293/Resources/predictors/rmvpe.pt"
+          ]
+        }
+      ]
+    },
+
+    "titan_medium_48k": {
+      "kind": "training",
+      "backend": "applio",
+      "engine_model": "TITAN-Medium-48k",
+      "display_name_he": "מודל בסיס TITAN Medium 48k",
+      "stems": [],
+      "sdr": null,
+      "license": {
+        "spdx": "Apache-2.0",
+        "verified_at": "2026-08-19",
+        "source": "huggingface.co/api/models/blaise-tk/TITAN revision cb72bb5bb05a85f07b17a33b014b694eaa9525f7 -> cardData.license apache-2.0",
+        "note_he": "מודל הבסיס TITAN ברישיון Apache-2.0; מותר להפצה."
+      },
+      "note_he": "זוג checkpoints של generator/discriminator ל-fine-tuning מקומי ב-48kHz.",
+      "files": [
+        {
+          "name": "training/applio/rvc/models/pretraineds/titan/D-f048k-TITAN-Medium.pth",
+          "size_bytes": 857126469,
+          "sha256": "4999a5b66aec0a9ab7e845063eeb242e47a611ab0e6260fb0b5ca44a7c5bbc44",
+          "urls": [
+            "https://huggingface.co/blaise-tk/TITAN/resolve/cb72bb5bb05a85f07b17a33b014b694eaa9525f7/models/medium/48k/pretrained/D-f048k-TITAN-Medium.pth"
+          ]
+        },
+        {
+          "name": "training/applio/rvc/models/pretraineds/titan/G-f048k-TITAN-Medium.pth",
+          "size_bytes": 452338845,
+          "sha256": "51a6dc93687f7e1a6051be3dec958289958c9c738d5c520e4fa956e7886ee153",
+          "urls": [
+            "https://huggingface.co/blaise-tk/TITAN/resolve/cb72bb5bb05a85f07b17a33b014b694eaa9525f7/models/medium/48k/pretrained/G-f048k-TITAN-Medium.pth"
+          ]
+        }
+      ]
     }
   }
 }

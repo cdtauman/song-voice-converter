@@ -42,6 +42,7 @@ class ModelKind(StrEnum):
     STEMS = "stems"
     F0 = "f0"
     HUBERT = "hubert"
+    TRAINING = "training"
 
 
 @dataclass(frozen=True)
@@ -89,7 +90,7 @@ class ModelSpec:
 
     @property
     def size_mb(self) -> float:
-        return self.size_bytes / (1024 ** 2)
+        return self.size_bytes / (1024**2)
 
     def is_present(self, models_dir: Path) -> bool:
         return all(f.path_in(models_dir).exists() for f in self.files)
@@ -182,6 +183,4 @@ def load_registry(path: Path | None = None) -> ModelRegistry:
             models[model_id] = _parse_model(model_id, entry)
         except (KeyError, ValueError, TypeError):
             continue
-    return ModelRegistry(
-        models=models, version=int(raw.get("version") or 1), source=str(path)
-    )
+    return ModelRegistry(models=models, version=int(raw.get("version") or 1), source=str(path))

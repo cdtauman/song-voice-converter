@@ -44,6 +44,20 @@ rvc = [
     "transformers",
     "faiss-cpu",
 ]
+# Local RVC training.  Applio source and weights are fetched, pinned and
+# checksum-verified by the engine; this extra supplies its Python runtime.
+training = [
+    "torch",
+    "torchaudio",
+    "torchfcpe",
+    "transformers",
+    "faiss-cpu",
+    "librosa",
+    "noisereduce>=3,<4",
+    "scikit-learn",
+    "tensorboard>=2.14,<3",
+    "tqdm",
+]
 
 [project.scripts]
 svc = "svc_engine.cli:main"

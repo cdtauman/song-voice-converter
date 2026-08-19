@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from svc_engine.backends.conversion import VoiceHandle
@@ -18,9 +18,11 @@ from svc_engine.config import paths as default_paths
 from svc_engine.errors import EngineError, ErrorCode
 from svc_engine.profiles import VoiceProfile
 from svc_engine.voices.manifest import (
+    AVATAR_FILE,
     INDEX_FILE,
     MODEL_FILE,
     PROFILE_FILE,
+    SAMPLE_FILE,
     VOICE_FILE,
     HealthState,
     HealthStatus,
@@ -163,6 +165,39 @@ class VoiceLibrary:
         voice_dir = self._voice_dir(voice_id)
         if voice_dir.exists():
             shutil.rmtree(voice_dir)
+
+    def update(
+        self,
+        voice_id: str,
+        *,
+        display_name: str | None = None,
+        sample: Path | str | None = None,
+        avatar: Path | str | None = None,
+    ) -> VoiceEntry:
+        """Update user-facing metadata without ever replacing model weights."""
+        entry = self.get(voice_id)
+        manifest = entry.manifest
+        if display_name is not None:
+            clean_name = display_name.strip()
+            if not clean_name:
+                raise ValueError("voice display name may not be empty")
+            manifest = replace(manifest, display_name=clean_name)
+        if sample is not None:
+            from svc_engine.audio import load_audio, save_wav, to_mono
+
+            source = Path(sample)
+            if not source.is_file():
+                raise ValueError("voice sample does not exist")
+            save_wav(to_mono(load_audio(source)), entry.root / SAMPLE_FILE, bit_depth=24)
+            manifest = replace(manifest, has_sample=True)
+        if avatar is not None:
+            source = Path(avatar)
+            if not source.is_file() or source.suffix.lower() != ".png":
+                raise ValueError("voice avatar must be a PNG file")
+            shutil.copy2(source, entry.root / AVATAR_FILE)
+            manifest = replace(manifest, has_avatar=True)
+        manifest.save(entry.root)
+        return VoiceEntry(manifest=manifest, root=entry.root)
 
     def voice_dir(self, voice_id: str) -> Path:
         return self._voice_dir(voice_id)
