@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -54,7 +55,7 @@ def test_all_main_screens_inherit_rtl() -> None:
     window = MainWindow(FakeClient())  # type: ignore[arg-type]
     try:
         assert window.layoutDirection() is Qt.LayoutDirection.RightToLeft
-        assert window.stack.count() == 4
+        assert window.stack.count() == 5
         assert window.wizard.pages.count() == 7
         for index in range(window.stack.count()):
             assert window.stack.widget(index).layoutDirection() is Qt.LayoutDirection.RightToLeft
@@ -111,6 +112,47 @@ def test_every_engine_error_has_hebrew_title_and_suggested_action() -> None:
         assert title.strip()
         assert action.strip()
         assert any("\u0590" <= character <= "\u05ff" for character in title + action)
+
+
+def test_advanced_controls_and_benchmark_screen_are_rtl(tmp_path: Path) -> None:
+    _app()
+    window = MainWindow(FakeClient())  # type: ignore[arg-type]
+    try:
+        window.wizard.advanced_toggle.setChecked(True)
+        request = window.wizard.request_data()
+        assert request["advanced"]["auto_tune"] is True
+        assert request["advanced"]["ambience_strategy"] == "B"
+        result = tmp_path / "bench"
+        (result / "audio").mkdir(parents=True)
+        (result / "audio" / "a.wav").write_bytes(b"RIFF")
+        (result / "audio" / "b.wav").write_bytes(b"RIFF")
+        (result / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "name": "test",
+                    "variants": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
+                    "blind_map": {"גרסה 1": "b", "גרסה 2": "a"},
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        (result / "results.csv").write_text(
+            "variant_id,repetition,status,seconds,peak_ram_mb,peak_vram_mb,audio,error,settings\n"
+            "a,1,ok,1.0,10,,audio/a.wav,,{}\n"
+            "b,1,ok,2.0,11,,audio/b.wav,,{}\n",
+            encoding="utf-8",
+        )
+        window.benchmark.load_results(result)
+        assert window.benchmark.table.rowCount() == 2
+        assert window.benchmark.blind.isChecked()
+        assert window.benchmark.player._buttons[0].text() == "A"
+        assert window.benchmark.table.item(0, 0).text() == "גרסה 2"
+        window.benchmark.blind.setChecked(False)
+        assert window.benchmark.table.item(0, 0).text() == "A"
+    finally:
+        window.close()
 
 
 def test_opening_gui_offers_to_resume_recoverable_cover(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

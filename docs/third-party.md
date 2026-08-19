@@ -137,3 +137,14 @@ SongVoice מוסיף מסביבו את חוזה ההסכמה, בדיקת האי�
 | Phase 5 | ✅ **נעשה** — רשת inference של RVC v2 (§1.3) + משקולות HuBERT (§2). התלויות `faiss-cpu`/`transformers` ננעלות ב-re-lock (ראה phase-5.md) | 4 + 1 |
 | Phase 9 | ✅ **נעשה** — Applio במתאם תהליך נעול + TITAN Medium 48k + ContentVec/RMVPE נעולים | 3 + 1 |
 | Phase 10 | Seed-VC (GPL-3.0) | **סביבה מבודדת בלבד — לעולם לא בליבה** |
+
+### 4.1 Phase 10 — מקורות benchmark מבודדים
+
+| מקור | commit | רישיון | שימוש |
+|---|---|---|---|
+| `Plachtaa/seed-vc` | `51383efd921027683c89e5348211d93ff12ac2a8` | GPL-3.0-only; archived 21.11.2025 | checkout מקומי תחת `env-bench/runtimes/seed` בלבד; zero-shot reference, לא production |
+| `yxlllc/DDSP-SVC` | `3635301027473c6662d05a1c73ef34fba7f15f90` | MIT | checkout מקומי תחת `env-bench/runtimes/ddsp` בלבד |
+
+לא הועתק קוד משני המקורות לריפו. `env-bench/adapter.py` הוא wrapper מקורי שמפעיל
+את ה־CLI שלהם בתהליך וב־venv נפרדים. משקולות אינן חלק מהרישיון של הריפו באופן
+אוטומטי: כל checkpoint שמוזן לתבנית הניסוי דורש audit נפרד, ואינו נארז.

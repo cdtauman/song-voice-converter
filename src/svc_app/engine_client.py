@@ -261,6 +261,7 @@ class EngineClient:
         quality: str,
         preview_seconds: float = 30.0,
         on_event: EventCallback | None = None,
+        advanced: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return dict(
             self.call(
@@ -269,6 +270,7 @@ class EngineClient:
                 voice_id=voice_id,
                 quality=quality,
                 preview_seconds=preview_seconds,
+                advanced=advanced or {},
                 on_event=on_event,
             )
         )
@@ -281,6 +283,7 @@ class EngineClient:
         quality: str,
         output: str,
         on_event: EventCallback | None = None,
+        advanced: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return dict(
             self.call(
@@ -289,6 +292,7 @@ class EngineClient:
                 voice_id=voice_id,
                 quality=quality,
                 output=output,
+                advanced=advanced or {},
                 on_event=on_event,
             )
         )

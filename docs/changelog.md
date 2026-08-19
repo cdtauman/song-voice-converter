@@ -2,6 +2,21 @@
 
 ---
 
+## 19.8.2026 — Phase 10: מצב מתקדם ומעבדת benchmark
+
+הדוח המלא: [phase-reports/phase-10.md](phase-reports/phase-10.md).
+
+- נוספו בקרות advanced מלאות עם הסברי ⓘ, חיווט ל־RPC/Job/cache ו־auto-tuning
+  מוגבל לארבעה מועמדים ששומר את baseline הידני.
+- `svc-bench` מריץ מטריצת TOML/JSON ומפיק CSV, HTML, manifest, audio/logs, זמני
+  ריצה ו־RAM/VRAM; נוסף מסך GUI עם טבלה ונגן multi-variant עיוור מסונכרן.
+- `env-bench` מבודדת ברמת checkout, venv ותהליך לכל מנוע. Seed-VC GPL והארכיוני
+  נעול ל־commit ומסומן reference-only; DDSP-SVC MIT נעול בנפרד. אין import לליבה.
+- שער מכני בן 4 ריצות וחמש השוואות objective עבר; האזנת 4/5 ומטריצת מנועים
+  אמיתית ממתינות לחומר שמע/קולות מורשים ולמשאבי GPU.
+
+---
+
 ## 19.8.2026 — Phase 9: ניהול קולות ואשף האימון
 
 הדוח המלא: [phase-reports/phase-9.md](phase-reports/phase-9.md).

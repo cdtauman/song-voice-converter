@@ -3,23 +3,30 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QProgressBar,
     QPushButton,
     QRadioButton,
     QScrollArea,
+    QSpinBox,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from svc_app.widgets import ABPlayer, DropZone, VoiceCard
+from svc_engine.tuning import PARAMETER_HELP_HE
 
 
 class CoverWizard(QWidget):
@@ -35,6 +42,7 @@ class CoverWizard(QWidget):
         self.preview_result: dict[str, object] = {}
         self._voice_cards: list[VoiceCard] = []
         self._processing_mode = "preview"
+        self._selected_advanced: dict[str, Any] | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(32, 24, 32, 24)
@@ -144,6 +152,13 @@ class CoverWizard(QWidget):
             layout.addWidget(card)
             if value == "balanced":
                 radio.setChecked(True)
+        self.advanced_toggle = QCheckBox("מצב מתקדם · שליטה מלאה בפרמטרים")
+        self.advanced_toggle.setStyleSheet("font-size: 16px; font-weight: 700;")
+        layout.addWidget(self.advanced_toggle)
+        self.advanced_panel = self._advanced_panel()
+        self.advanced_panel.setVisible(False)
+        self.advanced_toggle.toggled.connect(self.advanced_panel.setVisible)
+        layout.addWidget(self.advanced_panel)
         layout.addStretch()
         buttons = QHBoxLayout()
         back = QPushButton("חזרה")
@@ -155,6 +170,60 @@ class CoverWizard(QWidget):
         buttons.addWidget(start)
         layout.addLayout(buttons)
         return page
+
+    def _advanced_panel(self) -> QWidget:
+        panel = QFrame()
+        panel.setProperty("card", True)
+        grid = QGridLayout(panel)
+        self.index_rate = _double_control(0.0, 1.0, 0.70, 0.05)
+        self.protect = _double_control(0.0, 0.5, 0.33, 0.01)
+        self.rms_mix_rate = _double_control(0.0, 1.0, 0.25, 0.05)
+        self.filter_radius = QSpinBox()
+        self.filter_radius.setRange(0, 7)
+        self.filter_radius.setValue(3)
+        self.formant_shift = _double_control(-12.0, 12.0, 0.0, 0.25)
+        self.target_lufs = _double_control(-70.0, -5.0, -14.0, 0.5)
+        self.ambience_strategy = QComboBox()
+        self.ambience_strategy.addItem("A · החזרת החדר המקורי", "A")
+        self.ambience_strategy.addItem("B · שחזור פרמטרי", "B")
+        self.ambience_strategy.addItem("C · שילוב", "C")
+        self.ambience_strategy.setCurrentIndex(1)
+        self.playback_strategy = QComboBox()
+        self.playback_strategy.addItem("A · הזזת הליווי השלם", "A")
+        self.playback_strategy.addItem("B · פיצול ושמירת תופים", "B")
+        self.f0_method = QComboBox()
+        self.f0_method.addItem("אוטומטי", "auto")
+        self.f0_method.addItem("RMVPE · איכות מלאה", "rmvpe")
+        self.f0_method.addItem("FCPE · מהיר", "fcpe")
+        self.deess_enabled = QCheckBox("פעיל")
+        self.deess_enabled.setChecked(True)
+        self.melody_correction = QCheckBox("פעיל")
+        self.melody_correction.setChecked(True)
+        self.auto_tune = QCheckBox("כוונון אוטומטי · השווה 4 וריאנטים ב־Preview")
+        self.auto_tune.setChecked(True)
+        controls = [
+            ("index_rate", "דמיון (index)", self.index_rate),
+            ("protect", "הגנת עיצורים", self.protect),
+            ("rms_mix_rate", "שימור דינמיקה", self.rms_mix_rate),
+            ("filter_radius", "החלקת F0", self.filter_radius),
+            ("formant_shift", "הזזת formant", self.formant_shift),
+            ("target_lufs", "עוצמת מאסטר", self.target_lufs),
+            ("ambience_strategy", "מרחב אקוסטי", self.ambience_strategy),
+            ("playback_strategy", "אסטרטגיית ליווי", self.playback_strategy),
+            ("f0_method", "מחלץ גובה", self.f0_method),
+            ("deess_enabled", "De-esser", self.deess_enabled),
+            ("melody_correction", "תיקון מנגינה", self.melody_correction),
+        ]
+        for index, (key, text, control) in enumerate(controls):
+            row, block = divmod(index, 2)
+            column = block * 2
+            label = QLabel(f"{text}  ⓘ")
+            label.setToolTip(PARAMETER_HELP_HE[key])
+            control.setToolTip(PARAMETER_HELP_HE[key])
+            grid.addWidget(label, row, column)
+            grid.addWidget(control, row, column + 1)
+        grid.addWidget(self.auto_tune, 6, 0, 1, 4)
+        return panel
 
     def _processing_page(self) -> QWidget:
         page, layout = self._page_shell(
@@ -277,6 +346,10 @@ class CoverWizard(QWidget):
             self.drop_zone.set_file(song)
         self.voice_id = str(data.get("voice_id") or "")
         self.quality = str(data.get("quality") or "balanced")
+        advanced = data.get("advanced")
+        if isinstance(advanced, dict) and advanced:
+            self.advanced_toggle.setChecked(True)
+            self._set_advanced_values(advanced)
         self._voice_selected(self.voice_id)
         self._show(2 if self.song and self.voice_id else 0)
 
@@ -298,6 +371,12 @@ class CoverWizard(QWidget):
 
     def show_recommendation(self, result: dict[str, object]) -> None:
         self.preview_result = result
+        tuning = result.get("auto_tuning")
+        if isinstance(tuning, dict) and isinstance(tuning.get("winner_config"), dict):
+            self._selected_advanced = dict(tuning["winner_config"])
+            self._selected_advanced["auto_tune"] = False
+        else:
+            self._selected_advanced = None
         raw_recommendation = result.get("recommendation")
         recommendation = raw_recommendation if isinstance(raw_recommendation, dict) else {}
         shift = int(recommendation.get("semitones") or 0)
@@ -307,6 +386,8 @@ class CoverWizard(QWidget):
             detail = f"כדי לשמור על ההרמוניה, גם הליווי יוזז ב־{playback:+d} חצאי טונים."
         else:
             detail = "הליווי נשאר בגובה המקורי — אין צורך להזיז אותו."
+        if isinstance(tuning, dict):
+            detail += " הכוונון האוטומטי השווה ארבע גרסאות ושמר את בעלת המדד הטוב ביותר."
         self.recommend_detail.setText(detail)
         self._show(4)
 
@@ -325,6 +406,7 @@ class CoverWizard(QWidget):
         self.song = ""
         self.voice_id = ""
         self.preview_result = {}
+        self._selected_advanced = None
         self.song_next.setEnabled(False)
         self.voice_next.setEnabled(False)
         self.drop_zone.title.setText("גרור לכאן שיר")
@@ -354,11 +436,62 @@ class CoverWizard(QWidget):
         self.full_requested.emit(self.request_data())
 
     def _open_preview(self) -> None:
-        self.player.set_sources(self.song, str(self.preview_result.get("output") or ""))
+        tuning = self.preview_result.get("auto_tuning")
+        candidates = tuning.get("candidates") if isinstance(tuning, dict) else None
+        if isinstance(candidates, list) and len(candidates) >= 2:
+            variants = [
+                ("בחירה ידנית" if item.get("manual_baseline") else f"כוונון {index + 1}",
+                 str(item.get("audio") or ""))
+                for index, item in enumerate(candidates)
+                if isinstance(item, dict) and item.get("audio")
+            ]
+            self.player.set_variants(variants, blind=True)
+        else:
+            self.player.set_sources(self.song, str(self.preview_result.get("output") or ""))
         self._show(5)
 
-    def request_data(self) -> dict[str, str]:
-        return {"song": self.song, "voice_id": self.voice_id, "quality": self.quality}
+    def request_data(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
+            "song": self.song,
+            "voice_id": self.voice_id,
+            "quality": self.quality,
+        }
+        if self.advanced_toggle.isChecked():
+            data["advanced"] = self._selected_advanced or self._advanced_values()
+        return data
+
+    def _advanced_values(self) -> dict[str, Any]:
+        return {
+            "index_rate": self.index_rate.value(),
+            "protect": self.protect.value(),
+            "rms_mix_rate": self.rms_mix_rate.value(),
+            "filter_radius": self.filter_radius.value(),
+            "formant_shift": self.formant_shift.value(),
+            "target_lufs": self.target_lufs.value(),
+            "ambience_strategy": self.ambience_strategy.currentData(),
+            "playback_strategy": self.playback_strategy.currentData(),
+            "f0_method": self.f0_method.currentData(),
+            "deess_enabled": self.deess_enabled.isChecked(),
+            "melody_correction": self.melody_correction.isChecked(),
+            "auto_tune": self.auto_tune.isChecked(),
+        }
+
+    def _set_advanced_values(self, values: dict[str, Any]) -> None:
+        for name in (
+            "index_rate", "protect", "rms_mix_rate", "filter_radius",
+            "formant_shift", "target_lufs",
+        ):
+            if name in values:
+                getattr(self, name).setValue(values[name])
+        for name in ("ambience_strategy", "playback_strategy", "f0_method"):
+            if name in values:
+                control = getattr(self, name)
+                index = control.findData(values[name])
+                if index >= 0:
+                    control.setCurrentIndex(index)
+        for name in ("deess_enabled", "melody_correction", "auto_tune"):
+            if name in values:
+                getattr(self, name).setChecked(bool(values[name]))
 
     def _show(self, index: int) -> None:
         labels = ["בחירת שיר", "בחירת קול", "איכות", "עיבוד", "המלצה", "Preview", "תוצאה"]
@@ -370,3 +503,12 @@ def _primary_button(text: str) -> QPushButton:
     button = QPushButton(text)
     button.setProperty("primary", True)
     return button
+
+
+def _double_control(low: float, high: float, value: float, step: float) -> QDoubleSpinBox:
+    control = QDoubleSpinBox()
+    control.setRange(low, high)
+    control.setValue(value)
+    control.setSingleStep(step)
+    control.setDecimals(2)
+    return control

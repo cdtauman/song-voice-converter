@@ -35,6 +35,7 @@ def run_cover(
     output: str | None = None,
     preview: bool = False,
     preview_seconds: float = 30.0,
+    advanced: dict[str, Any] | None = None,
     on_progress: ProgressHook | None = None,
     on_job: JobHook | None = None,
     job_id: str | None = None,
@@ -57,6 +58,7 @@ def run_cover(
         "output": str(destination.resolve()),
         "preview": preview,
         "preview_seconds": preview_seconds,
+        "advanced": advanced or {},
     }
     atomic_write_json(request_path, request)
     try:
@@ -133,6 +135,14 @@ def _execute(
     payload["timings"] = {
         step_id: step.seconds for step_id, step in result.steps.items()
     }
+    tuning = payload.get("auto_tuning")
+    if isinstance(tuning, dict) and isinstance(tuning.get("candidates"), list):
+        render_outputs = result.steps["render"].outputs
+        for candidate in tuning["candidates"]:
+            if isinstance(candidate, dict):
+                candidate_id = str(candidate.get("id") or "")
+                if candidate_id in render_outputs:
+                    candidate["audio"] = str(render_outputs[candidate_id].resolve())
     _request_path(app_paths, identifier).unlink(missing_ok=True)
     return payload
 
@@ -160,6 +170,24 @@ def _production_steps(app_paths: Paths, request: dict[str, Any]) -> tuple[Step, 
     if entry.index_path is not None:
         voice_inputs.append(entry.index_path)
 
+    from svc_engine.tuning import AdvancedConfig
+
+    raw_advanced = request.get("advanced")
+    if raw_advanced and not isinstance(raw_advanced, dict):
+        raise EngineError(ErrorCode.INTERNAL, "advanced controls must be an object")
+    base_advanced = {
+        "index_rate": entry.manifest.recommended.index_rate,
+        "protect": entry.manifest.recommended.protect,
+        "rms_mix_rate": entry.manifest.recommended.rms_mix_rate,
+        "target_lufs": settings.target_lufs,
+    }
+    if isinstance(raw_advanced, dict):
+        base_advanced.update(raw_advanced)
+    try:
+        advanced = AdvancedConfig.from_dict(base_advanced)
+    except (TypeError, ValueError) as exc:
+        raise EngineError(ErrorCode.INTERNAL, f"invalid advanced controls: {exc}") from exc
+
     def separate(context: StepContext) -> dict[str, Path]:
         from svc_engine.audio import io as audio_io
         from svc_engine.separation import CleanupStep, QualityLevel, SeparationPipeline
@@ -185,7 +213,7 @@ def _production_steps(app_paths: Paths, request: dict[str, Any]) -> tuple[Step, 
             raise EngineError(ErrorCode.NO_VOCALS, "separation did not produce required stems")
         return outputs
 
-    method, device = _analysis_route(preview)
+    method, device = _analysis_route(preview, advanced.f0_method)
 
     def analyze(context: StepContext) -> dict[str, Path]:
         import numpy as np
@@ -215,11 +243,9 @@ def _production_steps(app_paths: Paths, request: dict[str, Any]) -> tuple[Step, 
 
         from svc_engine.audio import io as audio_io
         from svc_engine.backends.base import F0Curve
-        from svc_engine.backends.conversion import ConversionParams
         from svc_engine.backends.separation import StemKind
         from svc_engine.conversion import ConversionPipeline
-        from svc_engine.pitch import PlaybackStrategy
-        from svc_engine.postfx import AmbienceStrategy, PostFxConfig
+        from svc_engine.tuning import auto_tune
 
         separated = context.dependencies["separate"]
         vocals = audio_io.load_audio(separated["vocals"])
@@ -236,48 +262,89 @@ def _production_steps(app_paths: Paths, request: dict[str, Any]) -> tuple[Step, 
         profile = entry.profile()
         if profile is None:  # guarded above, but keep the action self-contained
             raise EngineError(ErrorCode.VOICE_CORRUPT, "voice profile disappeared")
-        recommended = ConversionParams(
-            index_rate=entry.manifest.recommended.index_rate,
-            protect=entry.manifest.recommended.protect,
-            rms_mix_rate=entry.manifest.recommended.rms_mix_rate,
+        playback = (
+            stems
+            if advanced.playback_strategy == "B"
+            and any(kind in stems for kind in (StemKind.BASS, StemKind.DRUMS, StemKind.OTHER))
+            else stems[StemKind.INSTRUMENTAL]
         )
-        output_extractor = _new_extractor(
-            app_paths,
-            method,
-            allow_downloads=settings.allow_model_downloads,
-            progress=context.progress,
-        )
-        pipeline = ConversionPipeline(
-            paths=app_paths,
-            postfx_config=PostFxConfig(
-                ambience_strategy=AmbienceStrategy.PARAMETRIC,
-                target_lufs=settings.target_lufs,
-            ),
-        )
-        cover, decision, postfx, _seconds = pipeline._render_cover_detailed(
-            vocals,
-            curve,
-            stems[StemKind.INSTRUMENTAL],
-            profile,
-            entry.handle(),
-            recommended,
-            device=device,
-            strategy=PlaybackStrategy.WHOLE,
-            ambience=stems.get(StemKind.AMBIENCE),
-            output_f0_extractor=output_extractor,
-            on_progress=context.progress,
-        )
+        rendered: dict[str, tuple[Any, Any, Any]] = {}
+        render_count = 0
+
+        def render_variant(config: Any) -> Any:
+            nonlocal render_count
+            key = json.dumps(config.to_dict(), sort_keys=True)
+            variant_index = render_count
+            render_count += 1
+            total_variants = 4 if preview and advanced.auto_tune else 1
+
+            def variant_progress(fraction: float, message: str) -> None:
+                context.progress((variant_index + fraction) / total_variants, message)
+
+            extractor = _new_extractor(
+                app_paths,
+                method,
+                allow_downloads=settings.allow_model_downloads,
+                progress=variant_progress,
+            )
+            pipeline = ConversionPipeline(paths=app_paths, postfx_config=config.postfx_config())
+            cover_item, decision_item, postfx_item, _seconds = pipeline._render_cover_detailed(
+                vocals,
+                curve,
+                playback,
+                profile,
+                entry.handle(),
+                config.conversion_params(),
+                device=device,
+                strategy=config.playback,
+                ambience=stems.get(StemKind.AMBIENCE),
+                output_f0_extractor=extractor,
+                on_progress=variant_progress,
+            )
+            rendered[key] = (cover_item, decision_item, postfx_item)
+            return cover_item
+
+        tuning_payload: dict[str, Any] | None = None
+        extra_outputs: dict[str, Path] = {}
+        if preview and advanced.auto_tune:
+            tuning = auto_tune(advanced, render_variant)
+            winner_key = json.dumps(tuning.winner.config.to_dict(), sort_keys=True)
+            cover, decision, postfx = rendered[winner_key]
+            candidates = []
+            for candidate in tuning.candidates:
+                candidate_path = context.output_dir / f"{candidate.candidate_id}.wav"
+                audio_io.save_wav(candidate.audio, candidate_path)
+                extra_outputs[candidate.candidate_id] = candidate_path
+                candidates.append(
+                    {
+                        "id": candidate.candidate_id,
+                        "score": candidate.score,
+                        "metrics": candidate.metrics,
+                        "config": candidate.config.to_dict(),
+                        "audio": candidate_path.name,
+                        "manual_baseline": candidate.candidate_id == "candidate-1",
+                    }
+                )
+            tuning_payload = {
+                "winner": tuning.winner.candidate_id,
+                "winner_config": tuning.winner.config.to_dict(),
+                "candidates": candidates,
+            }
+        else:
+            cover = render_variant(advanced)
+            key = json.dumps(advanced.to_dict(), sort_keys=True)
+            cover, decision, postfx = rendered[key]
         cover_path = context.output_dir / "cover.wav"
         audio_io.save_wav(cover, cover_path)
         best = decision.best
-        playback = (
+        playback_note = (
             "המוזיקה נשארה כמו שהיא"
             if best.remainder == 0
             else f"המוזיקה הוזזה ב-{best.remainder} חצאי-טונים"
         )
         summary = (
             f"קאבר בקול '{voice_id}' · הזזת שירה {best.semitones:+d} חצאי-טונים · "
-            f"{playback} · {postfx.mix.integrated_lufs:.1f} LUFS"
+            f"{playback_note} · {postfx.mix.integrated_lufs:.1f} LUFS"
         )
         metadata = {
             "source": str(source.resolve()),
@@ -296,12 +363,14 @@ def _production_steps(app_paths: Paths, request: dict[str, Any]) -> tuple[Step, 
                 "peak_dbfs": postfx.mix.peak_dbfs,
                 "clipped": postfx.mix.clipped,
             },
+            "advanced": advanced.to_dict(),
+            "auto_tuning": tuning_payload,
         }
         metadata_path = context.output_dir / "result.json"
         metadata_path.write_text(
             json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        return {"cover": cover_path, "metadata": metadata_path}
+        return {"cover": cover_path, "metadata": metadata_path, **extra_outputs}
 
     def deliver(context: StepContext) -> dict[str, Path]:
         from svc_engine.audio import io as audio_io
@@ -348,7 +417,7 @@ def _production_steps(app_paths: Paths, request: dict[str, Any]) -> tuple[Step, 
                 "method": method,
                 "device": device.torch_device,
                 "target_lufs": settings.target_lufs,
-                "ambience": "B",
+                "advanced": advanced.to_dict(),
             },
             input_files=tuple(voice_inputs),
             needs=("separate", "analyze"),
@@ -368,10 +437,10 @@ def _production_steps(app_paths: Paths, request: dict[str, Any]) -> tuple[Step, 
     )
 
 
-def _analysis_route(preview: bool) -> tuple[str, Any]:
+def _analysis_route(preview: bool, requested: str = "auto") -> tuple[str, Any]:
     from svc_engine.backends.base import DeviceHint
 
-    if not preview:
+    if requested == "rmvpe" or (requested == "auto" and not preview):
         return "rmvpe", DeviceHint()
     from svc_engine.compute import Component, DeviceManager, load_matrix
 

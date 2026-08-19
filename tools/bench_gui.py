@@ -1,4 +1,4 @@
-"""Phase-8/9 visual and RTL gate for the desktop screens and training wizard.
+"""Phase-10 visual and RTL gate for desktop, advanced and blind-comparison screens.
 
 Run on Windows (the offscreen Qt plugin has no system fonts):
 
@@ -118,7 +118,22 @@ def main() -> int:
             }
         )
 
-    for index, name in [(1, "voices"), (2, "projects"), (3, "settings")]:
+    window.wizard.advanced_toggle.setChecked(True)
+    window._navigate(0)
+    window.wizard._show(2)
+    app.processEvents()
+    advanced_image = window.grab().toImage()
+    captures.append(("advanced", advanced_image))
+    report.append(
+        {
+            "screen": "wizard-advanced",
+            "rtl": _rtl_tree(window.wizard.advanced_panel),
+            "width": advanced_image.width(),
+            "height": advanced_image.height(),
+        }
+    )
+
+    for index, name in [(1, "voices"), (2, "projects"), (3, "benchmark"), (4, "settings")]:
         window._navigate(index)
         app.processEvents()
         image = window.grab().toImage()
@@ -202,10 +217,10 @@ def main() -> int:
         )
         painter.drawImage((position % 2) * thumb_width, (position // 2) * thumb_height, thumbnail)
     painter.end()
-    sheet.save(str(RESULTS / "phase9-contact-sheet.png"))
+    sheet.save(str(RESULTS / "phase10-contact-sheet.png"))
 
     payload = {
-        "phase": 9,
+        "phase": 10,
         "screens": report,
         "all_rtl": all(item["rtl"] for item in report),
         "result": "pass" if all(item["rtl"] for item in report) else "fail",

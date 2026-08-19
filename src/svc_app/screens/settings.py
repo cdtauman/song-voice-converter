@@ -1,4 +1,4 @@
-"""Simple-mode settings; no Phase-10 advanced controls."""
+"""Application defaults, including the Phase-10 advanced-mode preference."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from svc_app.engine_client import EngineClient
 
 class SettingsScreen(QWidget):
     theme_changed = Signal(str)
+    advanced_changed = Signal(bool)
 
     def __init__(self, client: EngineClient) -> None:
         super().__init__()
@@ -49,11 +50,13 @@ class SettingsScreen(QWidget):
         self.cache_gb.setRange(0.0, 500.0)
         self.cache_gb.setSuffix(" GB")
         self.downloads = QCheckBox("אפשר הורדה אוטומטית של מודלים חסרים")
+        self.advanced = QCheckBox("הצג כברירת מחדל את בקרות המצב המתקדם")
         form.addRow("איכות ברירת מחדל:", self.quality)
         form.addRow("ערכת צבעים:", self.theme)
         form.addRow("עוצמת יעד:", self.target_lufs)
         form.addRow("מכסת מטמון:", self.cache_gb)
         form.addRow("הורדות:", self.downloads)
+        form.addRow("מצב מתקדם:", self.advanced)
         root.addLayout(form)
         root.addStretch()
         save = QPushButton("שמור הגדרות")
@@ -70,6 +73,7 @@ class SettingsScreen(QWidget):
         self.cache_gb.setValue(float(settings.get("keep_cache_gb", 20.0)))
         self.downloads.setChecked(bool(settings.get("allow_model_downloads", True)))
         self.theme.setCurrentIndex(max(0, self.theme.findData(settings.get("theme", "system"))))
+        self.advanced.setChecked(bool(settings.get("advanced_mode", False)))
 
     def save(self) -> None:
         self.client.save_settings(
@@ -78,5 +82,7 @@ class SettingsScreen(QWidget):
             keep_cache_gb=self.cache_gb.value(),
             allow_model_downloads=self.downloads.isChecked(),
             theme=str(self.theme.currentData()),
+            advanced_mode=self.advanced.isChecked(),
         )
         self.theme_changed.emit(str(self.theme.currentData()))
+        self.advanced_changed.emit(self.advanced.isChecked())

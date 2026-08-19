@@ -15,6 +15,8 @@
 > עבריות עם פעולה מוצעת — בלי לגעת בטרמינל.
 > **Phase 9** מוסיף בדיקת איכות חומר, ניקוי וחיתוך אוטומטיים, מעטפת אימון
 > Applio+TITAN עמידה לעצירה/המשך, ETA, פרופיל מנעד אוטומטי וניהול מלא של כרטיסי קול.
+> **Phase 10** מוסיף מצב מתקדם, כוונון Preview בן ארבעה מועמדים, מטריצת benchmark
+> שחזורית ומסך A/B עיוור. Seed-VC ו-DDSP-SVC נשארים מחוץ לליבה תחת `env-bench`.
 > הכרעת האיכות הסופית
 > עדיין ממתינה למודלי קול, לחמשת השירים המורשים ולהאזנה עיוורת — ראה
 > [phase-6.md](docs/phase-reports/phase-6.md). אימות GUI מקצה־לקצה על שמע אמיתי
@@ -42,6 +44,7 @@ svc analyze "vocals.wav" --report report.json --plot report.png
 svc profile "voice_sample.wav" --name yossi --out yossi.json
 svc pitch "vocals.wav" --voice yossi.json --report pitch.json
 svc convert "song.mp3" --voice yossi             # חוסם מודלים פרטיים כברירת מחדל
+svc-bench run benchmark/experiments/my-test.toml --out benchmark/results/my-test
 ```
 
 | שלב | מצב | דוח |
@@ -56,6 +59,7 @@ svc convert "song.mp3" --voice yossi             # חוסם מודלים פרט�
 | **Phase 7 — ניהול משימות ושרידות** | ✅ מימוש + מטריצת hard-crash מלאה | [phase-7.md](docs/phase-reports/phase-7.md) |
 | **Phase 8 — ממשק גרפי במצב פשוט** | ✅ מימוש + GUI/RTL gate; בדיקת שמע אנושית חסומה חיצונית | [phase-8.md](docs/phase-reports/phase-8.md) |
 | **Phase 9 — ניהול קולות ואשף אימון** | ✅ מימוש + session/quality/GUI; אימון קבלה על 15 דקות חסום על חומר חיצוני | [phase-9.md](docs/phase-reports/phase-9.md) |
+| **Phase 10 — מצב מתקדם ומעבדת benchmark** | ✅ מימוש ושערים מכניים; האזנת 5 מקרים ומטריצת מנועים חסומות על חומר חיצוני | [phase-10.md](docs/phase-reports/phase-10.md) |
 
 ## המסמכים
 
@@ -85,6 +89,8 @@ svc convert "song.mp3" --voice yossi             # חוסם מודלים פרט�
 3. לאמת את Phase 5 ואת מסלול ה־GUI על החומרים שנאספו, ואז להריץ את מטריצת Raw/A/B/C של
    [דוח Phase 6](docs/phase-reports/phase-6.md), למלא את יומן ההאזנה העיוורת ולנעול
    את אסטרטגיית המרחב ו-`rms_mix_rate`.
+4. להריץ את דוגמת Phase 10 על RVC/DDSP/Seed-VC, למלא חמישה ballots עיוורים ולאמת
+   אותם ב־`tools/check_tuning_acceptance.py`; אף runtime של `env-bench` אינו נארז.
 
 ## מדיניות שימוש בקולות
 

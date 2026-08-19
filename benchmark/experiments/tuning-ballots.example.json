@@ -1,0 +1,10 @@
+{
+  "instructions": "After blind listening, replace null with automatic, manual, or tie. Confirm only licensed audio.",
+  "cases": [
+    {"case": 1, "preferred": null, "licensed_audio_confirmed": false},
+    {"case": 2, "preferred": null, "licensed_audio_confirmed": false},
+    {"case": 3, "preferred": null, "licensed_audio_confirmed": false},
+    {"case": 4, "preferred": null, "licensed_audio_confirmed": false},
+    {"case": 5, "preferred": null, "licensed_audio_confirmed": false}
+  ]
+}

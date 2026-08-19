@@ -213,6 +213,23 @@ svc-bench run experiments/sep_models.yaml --out results/2026-08-20/
 | Vocoder: HiFi-GAN-NSF ↔ RefineGAN | Phase 10 | האם שווה את חוסר התאימות |
 | מנועי המרה: RVC v2 ↔ DDSP-SVC ↔ Seed-VC | Phase 10 | ב-`env-bench` מבודדת בלבד |
 
+### 5ג. שער Phase 10
+
+`svc-bench run <experiment.toml> --out <empty-folder>` מפיק `results.csv`,
+`report.html`, `manifest.json`, `audio/` ו־`logs/`. ה־manifest נועל SHA-256 לקלט,
+פקודות, הגדרות, רישיונות, סביבת מנוע, host ו־seed; כל ריצה שומרת זמן, peak RAM,
+peak VRAM כשזמין, exit code וכשל. הדוח כולל נגן עיוור ששומר את נקודת הזמן במעבר.
+
+`python tools/bench_phase10.py` הוא gate מכני ללא מודלים: שתי גרסאות × שתי חזרות,
+כל ארבעת artifacts, מיפוי עיוור, telemetry, ארבעה מועמדי tuning וחמש בדיקות שבהן
+הציון האוטומטי אינו נמוך מה-baseline. הוא אינו מחליף האזנה אנושית.
+
+לקבלה הסופית מריצים חמישה שירים מורשים, רושמים `automatic|manual|tie` בלי לחשוף
+זהויות, ואז מריצים `python tools/check_tuning_acceptance.py ballots.json`. ארבעה
+מקרים לפחות חייבים להיות `automatic` או `tie`. מטריצת המנועים מתחילה מהתבנית
+`benchmark/experiments/conversion_engines.example.toml`; Seed-VC מסומן GPL ונשאר
+reference בלבד בתוך `env-bench`.
+
 ### 🆕 5א. מטריצת אסטרטגיית פלייבק × גודל הזזה
 
 בגרסה הקודמת קבעתי כלל גורף: **"אף פעם לא מזיזים תופים."**

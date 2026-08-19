@@ -28,7 +28,13 @@ from PySide6.QtWidgets import (
 from svc_app.design import Theme, apply_theme
 from svc_app.engine_client import EngineCallError, EngineClient
 from svc_app.i18n import error_text
-from svc_app.screens import CoverWizard, ProjectsScreen, SettingsScreen, VoiceLibraryScreen
+from svc_app.screens import (
+    BenchmarkScreen,
+    CoverWizard,
+    ProjectsScreen,
+    SettingsScreen,
+    VoiceLibraryScreen,
+)
 
 
 class EngineWorker(QObject):
@@ -97,8 +103,9 @@ class MainWindow(QMainWindow):
         self.wizard = CoverWizard()
         self.library = VoiceLibraryScreen(self.client)
         self.projects = ProjectsScreen(self.client)
+        self.benchmark = BenchmarkScreen()
         self.settings = SettingsScreen(self.client)
-        for page in (self.wizard, self.library, self.projects, self.settings):
+        for page in (self.wizard, self.library, self.projects, self.benchmark, self.settings):
             self.stack.addWidget(page)
 
         self.nav_buttons: list[QPushButton] = []
@@ -106,7 +113,8 @@ class MainWindow(QMainWindow):
             ("♫  קאבר חדש", 0),
             ("●  ספריית קולות", 1),
             ("▣  פרויקטים", 2),
-            ("⚙  הגדרות", 3),
+            ("◫  מעבדת השוואה", 3),
+            ("⚙  הגדרות", 4),
         ]:
             button = QPushButton(label)
             button.setCheckable(True)
@@ -128,6 +136,7 @@ class MainWindow(QMainWindow):
         self.library.changed.connect(self.wizard.set_voices)
         self.projects.open_requested.connect(self._open_project)
         self.settings.theme_changed.connect(self._theme_changed)
+        self.settings.advanced_changed.connect(self.wizard.advanced_toggle.setChecked)
 
         self._navigate(0)
         self.library.refresh()
@@ -143,10 +152,10 @@ class MainWindow(QMainWindow):
             self.library.refresh()
         elif index == 2:
             self.projects.refresh()
-        elif index == 3:
+        elif index == 4:
             self.settings.refresh()
 
-    def _start_preview(self, request: dict[str, str]) -> None:
+    def _start_preview(self, request: dict[str, Any]) -> None:
         if not request.get("song") or not request.get("voice_id"):
             return
         self._save_project(request)
@@ -156,12 +165,13 @@ class MainWindow(QMainWindow):
                 song=request["song"],
                 voice_id=request["voice_id"],
                 quality=request["quality"],
+                advanced=request.get("advanced"),
                 on_event=event,
             ),
             self.wizard.show_recommendation,
         )
 
-    def _start_full(self, request: dict[str, str]) -> None:
+    def _start_full(self, request: dict[str, Any]) -> None:
         output = _available_output(Path(request["song"]))
         self.wizard.show_processing("full")
         self._start_worker(
@@ -170,6 +180,7 @@ class MainWindow(QMainWindow):
                 voice_id=request["voice_id"],
                 quality=request["quality"],
                 output=str(output),
+                advanced=request.get("advanced"),
                 on_event=event,
             ),
             self.wizard.show_result,
@@ -250,7 +261,7 @@ class MainWindow(QMainWindow):
         self._thread = None
         self._worker = None
 
-    def _save_project(self, request: dict[str, str]) -> None:
+    def _save_project(self, request: dict[str, Any]) -> None:
         source = Path(request["song"])
         digest = hashlib.sha256(str(source.resolve()).encode("utf-8")).hexdigest()[:16]
         # Persistence must not block a cover; the engine log keeps details.
@@ -262,6 +273,7 @@ class MainWindow(QMainWindow):
                     "song": str(source),
                     "voice_id": request["voice_id"],
                     "quality": request["quality"],
+                    "advanced": request.get("advanced") or {},
                 },
             )
 

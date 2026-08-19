@@ -317,6 +317,7 @@ class Server:
             output=None if preview else str(params["output"]),
             preview=preview,
             preview_seconds=float(params.get("preview_seconds") or 30.0),
+            advanced=dict(params.get("advanced") or {}),
             on_progress=lambda fraction, message: self._emit(
                 "progress", {"fraction": fraction, "message_he": message}
             ),

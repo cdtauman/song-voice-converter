@@ -53,6 +53,11 @@ temp/
 spike/.venvs/
 spike/last-run.log
 
+# Phase-10 benchmark engines and checkouts are intentionally local-only.  The
+# coordinator/adapters are tracked; every third-party runtime stays isolated.
+env-bench/runtimes/
+env-bench/.venv/
+
 # ── אריזה ──────────────────────────────────────────
 packaging/build/
 packaging/output/

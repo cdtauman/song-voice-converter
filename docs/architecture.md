@@ -220,6 +220,12 @@ hint   = DeviceHint.from_device(device)
 **סביבה שלישית — `env-bench`:** מבודדת לחלוטין, לא נארזת, מכילה את המנועים
 לבנצ'מרק בלבד (Seed-VC ודומיו). **אין לה שום נגיעה במטריצה הנעולה של הליבה.**
 
+Phase 10 מממשת את הגבול כתיקיית coordinator אחת שבתוכה runtime נפרד לכל מנוע:
+`env-bench/runtimes/seed/.venv` ו־`env-bench/runtimes/ddsp/.venv`. ההפרדה הפנימית
+נדרשת כי מטריצות Torch/NumPy של המנועים סותרות זו את זו. הליבה מפעילה רק פקודת
+subprocess שמחזירה WAV; אין import, dependency או checkpoint משותף. Hatch אורז
+במפורש רק `src/svc_engine` ו־`src/svc_app`, וכל `runtimes/` מוחרג מ־Git.
+
 ---
 
 ## 4. מודל המשימה (Job)

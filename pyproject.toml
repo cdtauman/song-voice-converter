@@ -62,6 +62,7 @@ training = [
 [project.scripts]
 svc = "svc_engine.cli:main"
 songvoice = "svc_app.main:main"
+svc-bench = "svc_engine.benchmark.cli:main"
 
 [build-system]
 requires = ["hatchling"]
