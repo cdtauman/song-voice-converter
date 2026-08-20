@@ -13,6 +13,7 @@ download path entirely.
 
 from __future__ import annotations
 
+import errno
 import logging
 import shutil
 import time
@@ -117,6 +118,8 @@ class DownloadManager:
             try:
                 self._fetch_with_retries(spec, file_spec, url, target, on_progress)
             except EngineError as exc:
+                if exc.code is ErrorCode.DISK_FULL:
+                    raise
                 last_error = exc.detail
                 log.warning("mirror failed (%s): %s", url, exc.detail)
                 continue
@@ -178,6 +181,9 @@ class DownloadManager:
                 part.replace(target)
                 return
             except (requests.RequestException, OSError) as exc:
+                if isinstance(exc, OSError) and _is_disk_full(exc):
+                    part.unlink(missing_ok=True)
+                    raise EngineError(ErrorCode.DISK_FULL, str(exc)) from exc
                 last_error = str(exc)
                 log.warning(
                     "download attempt %d/%d failed for %s: %s",
@@ -221,20 +227,27 @@ class DownloadManager:
         total = (have + int(declared)) if declared and declared.isdigit() else file_spec.size_bytes
 
         done = have
-        with part.open("ab" if resuming else "wb") as fh:
-            for chunk in response.iter_content(chunk_size=_CHUNK):
-                if not chunk:
-                    continue
-                fh.write(chunk)
-                done += len(chunk)
-                if on_progress is not None:
-                    on_progress(
-                        DownloadProgress(
-                            model_id=spec.id,
-                            file_name=file_spec.name,
-                            done_bytes=done,
-                            total_bytes=total,
-                            attempt=attempt,
+        try:
+            with part.open("ab" if resuming else "wb") as fh:
+                for chunk in response.iter_content(chunk_size=_CHUNK):
+                    if not chunk:
+                        continue
+                    fh.write(chunk)
+                    done += len(chunk)
+                    if on_progress is not None:
+                        on_progress(
+                            DownloadProgress(
+                                model_id=spec.id,
+                                file_name=file_spec.name,
+                                done_bytes=done,
+                                total_bytes=total,
+                                attempt=attempt,
+                            )
                         )
-                    )
-        response.close()
+        finally:
+            response.close()
+
+
+def _is_disk_full(exc: OSError) -> bool:
+    """Recognise POSIX and Windows disk-full errors from an active write."""
+    return exc.errno == errno.ENOSPC or getattr(exc, "winerror", None) == 112

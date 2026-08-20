@@ -56,6 +56,8 @@ def build_extractor(method: str):  # type: ignore[no-untyped-def]
 
 
 def main(argv: list[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", nargs="?", help="vocal file; omit for a synthetic tone")
     parser.add_argument("--method", choices=["fcpe", "rmvpe", "both"], default="both")

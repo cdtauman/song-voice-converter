@@ -133,7 +133,13 @@ def main() -> int:
         }
     )
 
-    for index, name in [(1, "voices"), (2, "projects"), (3, "benchmark"), (4, "settings")]:
+    for index, name in [
+        (1, "voices"),
+        (2, "projects"),
+        (3, "benchmark"),
+        (4, "settings"),
+        (5, "help"),
+    ]:
         window._navigate(index)
         app.processEvents()
         image = window.grab().toImage()

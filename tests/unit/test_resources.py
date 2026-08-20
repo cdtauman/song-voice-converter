@@ -7,6 +7,7 @@ mirror, and none of that needs a real server to prove.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 from pathlib import Path
@@ -210,6 +211,55 @@ def test_transient_failures_are_retried(tmp_path: Path) -> None:
         tmp_path, session=FakeSession(fail_first=2), backoff_seconds=0.0
     )
     assert sha256_of(manager.ensure_file(spec, spec.files[0])) == digest
+
+
+def test_connection_drop_mid_download_resumes_the_partial_file(tmp_path: Path) -> None:
+    class InterruptedResponse(FakeResponse):
+        def iter_content(self, chunk_size: int = 1):
+            yield BODY[:1000]
+            raise requests.ConnectionError("simulated mid-stream disconnect")
+
+    class InterruptedSession(FakeSession):
+        def get(self, url, headers=None, stream=False, timeout=None):  # noqa: ANN001
+            self.calls.append((url, headers or {}))
+            if len(self.calls) == 1:
+                return InterruptedResponse(BODY)
+            start = int((headers or {})["Range"].split("=")[1].split("-")[0])
+            return FakeResponse(
+                BODY[start:], status=206, headers={"content-length": str(len(BODY) - start)}
+            )
+
+    digest = hashlib.sha256(BODY).hexdigest()
+    session = InterruptedSession()
+    spec = make_spec(["https://mirror/w.ckpt"], sha256=digest)
+    manager = DownloadManager(tmp_path, session=session, backoff_seconds=0.0)
+
+    assert sha256_of(manager.ensure_file(spec, spec.files[0])) == digest
+    assert session.calls[1][1]["Range"] == "bytes=1000-"
+    assert not (tmp_path / "w.ckpt.part").exists()
+
+
+def test_disk_full_during_download_is_actionable_and_removes_partial_file(
+    tmp_path: Path,
+) -> None:
+    class DiskFullResponse(FakeResponse):
+        def iter_content(self, chunk_size: int = 1):
+            yield BODY[:1000]
+            raise OSError(errno.ENOSPC, "simulated disk full")
+
+    class DiskFullSession(FakeSession):
+        def get(self, url, headers=None, stream=False, timeout=None):  # noqa: ANN001
+            self.calls.append((url, headers or {}))
+            return DiskFullResponse(BODY)
+
+    spec = make_spec(["https://mirror/w.ckpt"], sha256=hashlib.sha256(BODY).hexdigest())
+    manager = DownloadManager(tmp_path, session=DiskFullSession(), backoff_seconds=0.0)
+
+    with pytest.raises(EngineError) as caught:
+        manager.ensure_file(spec, spec.files[0])
+    assert caught.value.code is ErrorCode.DISK_FULL
+    assert not (tmp_path / "w.ckpt.part").exists()
+    assert not (tmp_path / "w.ckpt").exists()
 
 
 def test_a_dead_mirror_falls_through_to_the_next_one(tmp_path: Path) -> None:

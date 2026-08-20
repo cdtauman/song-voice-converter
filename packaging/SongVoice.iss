@@ -1,5 +1,7 @@
 #define MyAppName "SongVoice"
-#define MyAppVersion "0.1.0"
+#ifndef MyAppVersion
+#define MyAppVersion "1.0.0"
+#endif
 #define MyAppPublisher "SongVoice"
 #define MyAppExeName "SongVoiceLauncher.exe"
 

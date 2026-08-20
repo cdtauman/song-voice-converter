@@ -201,52 +201,52 @@
   ],
   "playback_matrix": {
     "source": "synthetic 3-stem",
-    "shifter_available": true,
+    "shifter_available": false,
     "note": "winner column is decided by blind listening on real material",
     "rows": [
       {
         "abs_r": 1,
         "r": -1,
-        "A_length_ok": true,
-        "A_artifacts": 0.02099,
-        "B_length_ok": true,
-        "B_artifacts": 0.02476,
+        "A_length_ok": null,
+        "B_length_ok": null,
+        "A_artifacts": null,
+        "B_artifacts": null,
         "winner": null
       },
       {
         "abs_r": 2,
         "r": -2,
-        "A_length_ok": true,
-        "A_artifacts": 0.01699,
-        "B_length_ok": true,
-        "B_artifacts": 0.02433,
+        "A_length_ok": null,
+        "B_length_ok": null,
+        "A_artifacts": null,
+        "B_artifacts": null,
         "winner": null
       },
       {
         "abs_r": 3,
         "r": -3,
-        "A_length_ok": true,
-        "A_artifacts": 0.0141,
-        "B_length_ok": true,
-        "B_artifacts": 0.02447,
+        "A_length_ok": null,
+        "B_length_ok": null,
+        "A_artifacts": null,
+        "B_artifacts": null,
         "winner": null
       },
       {
         "abs_r": 4,
         "r": -4,
-        "A_length_ok": true,
-        "A_artifacts": 0.01179,
-        "B_length_ok": true,
-        "B_artifacts": 0.0244,
+        "A_length_ok": null,
+        "B_length_ok": null,
+        "A_artifacts": null,
+        "B_artifacts": null,
         "winner": null
       },
       {
         "abs_r": 6,
         "r": -6,
-        "A_length_ok": true,
-        "A_artifacts": 0.00715,
-        "B_length_ok": true,
-        "B_artifacts": 0.02453,
+        "A_length_ok": null,
+        "B_length_ok": null,
+        "A_artifacts": null,
+        "B_artifacts": null,
         "winner": null
       }
     ]

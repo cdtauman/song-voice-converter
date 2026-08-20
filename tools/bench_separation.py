@@ -75,6 +75,14 @@ class _FixedDevice:
     def device_for(self, component: Component, manager: DeviceManager):  # noqa: ANN201
         return manager.select({self._backend})
 
+    def device_for_implementation(
+        self,
+        component: Component,
+        implementation: str,
+        manager: DeviceManager,
+    ):  # noqa: ANN201
+        return manager.select({self._backend})
+
     def get(self, component: Component):  # noqa: ANN201
         return self._real.get(component)
 

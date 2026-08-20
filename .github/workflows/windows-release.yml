@@ -35,19 +35,21 @@ jobs:
       - name: Build online installer
         shell: pwsh
         run: |
-          packaging/build.ps1
           $version = "${{ github.ref_name }}".TrimStart("v")
+          packaging/build.ps1 -Version $version
           packaging/build-update.ps1 -Version $version
       - name: Build verified offline payload and installer
         shell: pwsh
         run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
           .venv/Scripts/python.exe packaging/build-offline-models.py
-          packaging/build.ps1 -Offline
+          packaging/build.ps1 -Version $version -Offline
       - name: Clean-machine install and uninstall flows
         shell: pwsh
         run: |
-          packaging/verify-clean-machine.ps1 -Installer packaging/output/SongVoice-0.1.0-Setup.exe
-          packaging/verify-clean-machine.ps1 -Installer packaging/output/SongVoice-0.1.0-Offline-Setup.exe -Offline
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          packaging/verify-clean-machine.ps1 -Installer "packaging/output/SongVoice-$version-Setup.exe"
+          packaging/verify-clean-machine.ps1 -Installer "packaging/output/SongVoice-$version-Offline-Setup.exe" -Offline
       - name: Optional Authenticode signing
         if: ${{ env.WINDOWS_CERT_BASE64 != '' }}
         shell: pwsh

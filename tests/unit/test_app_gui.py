@@ -10,7 +10,7 @@ from typing import Any
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt  # noqa: E402
-from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
+from PySide6.QtWidgets import QApplication, QLabel, QMessageBox  # noqa: E402
 
 from svc_app.i18n import error_text  # noqa: E402
 from svc_app.main import MainWindow  # noqa: E402
@@ -55,7 +55,7 @@ def test_all_main_screens_inherit_rtl() -> None:
     window = MainWindow(FakeClient())  # type: ignore[arg-type]
     try:
         assert window.layoutDirection() is Qt.LayoutDirection.RightToLeft
-        assert window.stack.count() == 5
+        assert window.stack.count() == 6
         assert window.wizard.pages.count() == 7
         for index in range(window.stack.count()):
             assert window.stack.widget(index).layoutDirection() is Qt.LayoutDirection.RightToLeft
@@ -64,6 +64,21 @@ def test_all_main_screens_inherit_rtl() -> None:
                 window.wizard.pages.widget(index).layoutDirection()
                 is Qt.LayoutDirection.RightToLeft
             )
+    finally:
+        window.close()
+
+
+def test_help_screen_is_built_in_hebrew_and_available_offline() -> None:
+    _app()
+    window = MainWindow(FakeClient())  # type: ignore[arg-type]
+    try:
+        window._navigate(5)
+        assert window.stack.currentWidget() is window.help
+        text = " ".join(label.text() for label in window.help.findChildren(QLabel))
+        assert window.help.layoutDirection() is Qt.LayoutDirection.RightToLeft
+        assert "קאבר ראשון" in text
+        assert "אין מקום בדיסק" in text
+        assert "ללא אינטרנט" in text
     finally:
         window.close()
 

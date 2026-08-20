@@ -4,104 +4,110 @@
     {
       "screen": "wizard-song",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "wizard-voice",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "wizard-quality",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "wizard-processing",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "wizard-recommendation",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "wizard-preview",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "wizard-result",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "wizard-advanced",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "screen-voices",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "screen-projects",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "screen-benchmark",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "screen-settings",
       "rtl": true,
-      "width": 1180,
-      "height": 760
+      "width": 1770,
+      "height": 1140
+    },
+    {
+      "screen": "screen-help",
+      "rtl": true,
+      "width": 1770,
+      "height": 1140
     },
     {
       "screen": "training-recordings",
       "rtl": true,
-      "width": 932,
-      "height": 600
+      "width": 1140,
+      "height": 900
     },
     {
       "screen": "training-quality",
       "rtl": true,
-      "width": 932,
-      "height": 600
+      "width": 1140,
+      "height": 900
     },
     {
       "screen": "training-cleaning",
       "rtl": true,
-      "width": 932,
-      "height": 600
+      "width": 1140,
+      "height": 900
     },
     {
       "screen": "training-training",
       "rtl": true,
-      "width": 932,
-      "height": 600
+      "width": 1140,
+      "height": 900
     },
     {
       "screen": "training-ready",
       "rtl": true,
-      "width": 932,
-      "height": 600
+      "width": 1140,
+      "height": 900
     }
   ],
   "all_rtl": true,

@@ -33,6 +33,7 @@ from svc_app.runtime import configure_bundled_runtime
 from svc_app.screens import (
     BenchmarkScreen,
     CoverWizard,
+    HelpScreen,
     ProjectsScreen,
     SettingsScreen,
     VoiceLibraryScreen,
@@ -108,7 +109,15 @@ class MainWindow(QMainWindow):
         self.projects = ProjectsScreen(self.client)
         self.benchmark = BenchmarkScreen()
         self.settings = SettingsScreen(self.client)
-        for page in (self.wizard, self.library, self.projects, self.benchmark, self.settings):
+        self.help = HelpScreen()
+        for page in (
+            self.wizard,
+            self.library,
+            self.projects,
+            self.benchmark,
+            self.settings,
+            self.help,
+        ):
             self.stack.addWidget(page)
 
         self.nav_buttons: list[QPushButton] = []
@@ -118,6 +127,7 @@ class MainWindow(QMainWindow):
             ("▣  פרויקטים", 2),
             ("◫  מעבדת השוואה", 3),
             ("⚙  הגדרות", 4),
+            ("?  עזרה", 5),
         ]:
             button = QPushButton(label)
             button.setCheckable(True)

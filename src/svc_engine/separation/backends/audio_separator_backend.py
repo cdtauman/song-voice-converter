@@ -23,6 +23,7 @@ Three things it does *not* do, which this adapter adds:
 
 from __future__ import annotations
 
+import json
 import logging
 import tempfile
 from contextlib import suppress
@@ -67,6 +68,20 @@ _STEM_ALIASES: dict[str, StemKind] = {
     "dry": StemKind.VOCALS,
     "restored": StemKind.VOCALS,
     "noise": StemKind.OTHER,
+}
+
+# audio-separator 0.44.5 fetches this list unconditionally before it checks
+# its bundled model catalogue.  The SongVoice production model is already in
+# that bundled catalogue, so an empty snapshot of the remote-only sections is
+# sufficient and keeps a fully provisioned offline installation offline.
+_OFFLINE_DOWNLOAD_CATALOG = {
+    "demucs_download_list": {},
+    "vr_download_list": {},
+    "mdx_download_list": {},
+    "mdx_download_vip_list": {},
+    "mdx23c_download_list": {},
+    "mdx23c_download_vip_list": {},
+    "roformer_download_list": {},
 }
 
 
@@ -181,6 +196,7 @@ class AudioSeparatorBackend:
         except ImportError as exc:  # pragma: no cover - checked by `svc doctor`
             raise EngineError(ErrorCode.BACKEND_UNAVAILABLE, str(exc)) from exc
 
+        self._ensure_offline_download_catalog()
         segment_size = request.segment_size or 256
         separator = Separator(
             log_level=logging.WARNING,
@@ -214,6 +230,21 @@ class AudioSeparatorBackend:
         )
         self._apply_device(separator, device)
         return separator
+
+    def _ensure_offline_download_catalog(self) -> None:
+        """Supply the locked library's required catalogue without a network call."""
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+        catalog = self.models_dir / "download_checks.json"
+        if catalog.is_file():
+            return
+        temporary = catalog.with_suffix(".tmp")
+        try:
+            temporary.write_text(
+                json.dumps(_OFFLINE_DOWNLOAD_CATALOG, sort_keys=True), encoding="utf-8"
+            )
+            temporary.replace(catalog)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def _apply_device(self, separator, device: DeviceHint) -> None:  # type: ignore[no-untyped-def]
         """Point the library at the device the support matrix chose.

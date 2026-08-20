@@ -186,6 +186,10 @@ def run_playback(instrumental_path: str | None) -> dict[str, object]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # A Hebrew Windows locale can select cp1255, which cannot encode the report's
+    # arrows. Force UTF-8 so the acceptance harness itself cannot fail on output.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )

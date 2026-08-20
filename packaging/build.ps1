@@ -1,16 +1,29 @@
 [CmdletBinding()]
 param(
     [string]$Python = ".venv\Scripts\python.exe",
+    [string]$Version = "",
     [switch]$Offline,
+    [switch]$SkipBuildRequirements,
     [switch]$SkipInstaller
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $PythonPath = (Resolve-Path (Join-Path $RepoRoot $Python)).Path
+if (-not $Version) {
+    $match = Select-String -LiteralPath (Join-Path $RepoRoot "pyproject.toml") -Pattern '^version = "([0-9]+\.[0-9]+\.[0-9]+)"$' | Select-Object -First 1
+    if (-not $match) { throw "Unable to read project version from pyproject.toml" }
+    $Version = $match.Matches[0].Groups[1].Value
+}
+if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { throw "Invalid release version: $Version" }
 & (Join-Path $PSScriptRoot "fetch-dependencies.ps1")
-uv pip install --python $PythonPath -r (Join-Path $PSScriptRoot "build-requirements.txt")
-if ($LASTEXITCODE -ne 0) { throw "Unable to install packaging tools" }
+if (-not $SkipBuildRequirements) {
+    uv pip install --python $PythonPath -r (Join-Path $PSScriptRoot "build-requirements.txt")
+    if ($LASTEXITCODE -ne 0) { throw "Unable to install packaging tools" }
+} else {
+    & $PythonPath -c "import PyInstaller"
+    if ($LASTEXITCODE -ne 0) { throw "PyInstaller is missing from the selected Python" }
+}
 
 Push-Location $RepoRoot
 try {
@@ -39,8 +52,8 @@ if (-not $iscc) {
 }
 if (-not $iscc) { throw "Inno Setup 6 is required to build the installer" }
 if ($Offline) {
-    & $iscc "/DOfflineBuild=1" (Join-Path $PSScriptRoot "SongVoice.iss")
+    & $iscc "/DMyAppVersion=$Version" "/DOfflineBuild=1" (Join-Path $PSScriptRoot "SongVoice.iss")
 } else {
-    & $iscc (Join-Path $PSScriptRoot "SongVoice.iss")
+    & $iscc "/DMyAppVersion=$Version" (Join-Path $PSScriptRoot "SongVoice.iss")
 }
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }

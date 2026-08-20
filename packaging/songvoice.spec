@@ -17,6 +17,8 @@ hiddenimports = [
 datas = [
     (str(src / "svc_engine" / "data"), "svc_engine/data"),
     (str(repo / "docs" / "third-party.md"), "licenses"),
+    (str(repo / "docs" / "user-guide-he.md"), "docs"),
+    (str(repo / "docs" / "media" / "songvoice-quickstart-he.mp4"), "docs/media"),
     (str(deps / "ffmpeg"), "runtime/ffmpeg"),
 ] + collect_data_files("audio_separator") + collect_data_files("pymss")
 binaries = []
