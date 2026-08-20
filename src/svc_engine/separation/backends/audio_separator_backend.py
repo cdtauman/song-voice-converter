@@ -28,6 +28,7 @@ import logging
 import tempfile
 from contextlib import suppress
 from pathlib import Path
+from typing import Any
 
 from svc_engine.audio import io as audio_io
 from svc_engine.backends.base import AudioBuffer, BackendInfo, DeviceHint
@@ -74,7 +75,7 @@ _STEM_ALIASES: dict[str, StemKind] = {
 # its bundled model catalogue.  The SongVoice production model is already in
 # that bundled catalogue, so an empty snapshot of the remote-only sections is
 # sufficient and keeps a fully provisioned offline installation offline.
-_OFFLINE_DOWNLOAD_CATALOG = {
+_OFFLINE_DOWNLOAD_CATALOG: dict[str, dict[str, Any]] = {
     "demucs_download_list": {},
     "vr_download_list": {},
     "mdx_download_list": {},
