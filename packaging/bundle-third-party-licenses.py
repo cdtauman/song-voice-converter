@@ -25,7 +25,8 @@ def _license_root(distribution: Path) -> Path | None:
     # dist-info directory.  The wheel still has the notices at build time, so
     # bundle them from the installed package instead of making a release
     # depend on a PyInstaller implementation detail.
-    metadata_directory = Path(getattr(installed_distribution("torch"), "_path"))
+    metadata = installed_distribution("torch")
+    metadata_directory = Path(metadata._path)  # type: ignore[attr-defined]
     installed = metadata_directory / "licenses" / "third_party"
     if not installed.is_dir():
         raise RuntimeError(f"Torch third-party license tree is unavailable: {installed}")
