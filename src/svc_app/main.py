@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -410,6 +411,8 @@ def main(argv: list[str] | None = None) -> int:
 
         serve_stdio()
         return 0
+    if args.smoke_test:
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     instance = QApplication.instance()
     app = instance if isinstance(instance, QApplication) else QApplication(sys.argv[:1])
     app.setApplicationName("SongVoice")
