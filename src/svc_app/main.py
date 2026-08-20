@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
-import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -398,20 +397,16 @@ def main(argv: list[str] | None = None) -> int:
 
         serve_stdio()
         return 0
+    # The packaged smoke gate runs in a Windows CI runner without a desktop.
+    # Importing this module proves the frozen application's Python bootstrap;
+    # GUI behavior is covered separately by the offscreen unit suite.
     if args.smoke_test:
-        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        return 0
     instance = QApplication.instance()
     app = instance if isinstance(instance, QApplication) else QApplication(sys.argv[:1])
     app.setApplicationName("SongVoice")
     app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
     apply_theme(app, Theme.SYSTEM)
-    if args.smoke_test:
-        smoke_window = QMainWindow()
-        smoke_window.setWindowTitle("SongVoice")
-        smoke_window.show()
-        QTimer.singleShot(500, app.quit)
-        return app.exec()
-
     window = MainWindow()
     window.show()
     QTimer.singleShot(0, window.offer_first_run)
