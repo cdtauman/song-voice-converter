@@ -7,8 +7,11 @@ $app = Join-Path $Distribution "SongVoice.exe"
 $launcher = Join-Path $Distribution "SongVoiceLauncher.exe"
 $ffmpeg = Join-Path $Distribution "_internal\runtime\ffmpeg\bin\ffmpeg.exe"
 $licenseBundle = Join-Path $Distribution "_internal\licenses\torch-third-party-licenses.zip"
-foreach ($required in $app, $launcher, $ffmpeg, $licenseBundle) {
+foreach ($required in $app, $launcher, $ffmpeg) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Missing: $required" }
+}
+if ((Test-Path -LiteralPath (Join-Path $Distribution "_internal\torch") -PathType Container) -and -not (Test-Path -LiteralPath $licenseBundle -PathType Leaf)) {
+    throw "Missing Torch third-party license bundle: $licenseBundle"
 }
 $bad = Get-ChildItem -LiteralPath $Distribution -Recurse | Where-Object {
     $_.FullName -match "env-bench|benchmark[\\/]runtimes|seed-vc|ddsp-svc"

@@ -19,9 +19,12 @@ def test_license_bundle_uses_collected_torch_notices(tmp_path: Path) -> None:
     distribution = tmp_path / "SongVoice"
     notices = distribution / "_internal" / "torch-2.13.0.dist-info" / "licenses" / "third_party"
     notices.mkdir(parents=True)
+    (distribution / "_internal" / "torch").mkdir()
     (notices / "NOTICE").write_text("notice", encoding="utf-8")
 
-    output, count = _module().bundle(distribution)
+    result = _module().bundle(distribution)
+    assert result is not None
+    output, count = result
 
     assert count == 1
     with zipfile.ZipFile(output) as archive:
@@ -39,8 +42,16 @@ def test_license_bundle_falls_back_to_installed_torch_notices(tmp_path: Path, mo
         module, "installed_distribution", lambda _name: SimpleNamespace(_path=metadata)
     )
 
-    output, count = module.bundle(tmp_path / "SongVoice")
+    distribution = tmp_path / "SongVoice"
+    (distribution / "_internal" / "torch").mkdir(parents=True)
+    result = module.bundle(distribution)
+    assert result is not None
+    output, count = result
 
     assert count == 1
     with zipfile.ZipFile(output) as archive:
         assert archive.namelist() == ["NOTICE"]
+
+
+def test_license_bundle_skips_torch_notices_when_torch_is_not_packaged(tmp_path: Path) -> None:
+    assert _module().bundle(tmp_path / "SongVoice") is None
