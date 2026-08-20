@@ -36,6 +36,14 @@ jobs:
       - name: Install project
         run: uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
 
+      # Audio fixtures exercise the real ffmpeg/ffprobe boundary.  The
+      # Windows runner does not provide either binary by default.
+      - name: Install FFmpeg
+        shell: pwsh
+        run: |
+          choco install ffmpeg --yes --no-progress
+          (Join-Path $env:ChocolateyInstall "bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Lint (ruff)
         run: .venv\Scripts\python.exe -m ruff check .
 

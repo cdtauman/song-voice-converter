@@ -20,6 +20,7 @@ def _worker(mode: str, root: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(WORKER), mode, str(root)],
         text=True,
+        encoding="utf-8",
         capture_output=True,
         timeout=30,
         env=env,

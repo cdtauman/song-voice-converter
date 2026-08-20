@@ -16,6 +16,11 @@ from svc_engine.config import paths  # noqa: E402
 from svc_engine.jobs import Step  # noqa: E402
 from svc_engine.rpc import Request, Server  # noqa: E402
 
+# GitHub's Windows runner defaults child-process stdout to cp1252, while the
+# RPC response intentionally contains Hebrew status text.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 
 def fake_steps(app_paths, request):  # type: ignore[no-untyped-def]
     root = app_paths.root.parent
