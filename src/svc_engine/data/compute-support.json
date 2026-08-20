@@ -1,7 +1,7 @@
 {
-  "source": "verify-backends on DESKTOP-L27TH60",
+  "source": "Phase 1 verify-backends + Phase 2 real separation benchmark on DESKTOP-L27TH60",
   "machine": "Windows-10-10.0.26200-SP0",
-  "verified_at": "2026-08-17T00:56:02+00:00",
+  "verified_at": "2026-08-17T13:13:00+00:00",
   "components": {
     "separation": {
       "proofs": {
@@ -10,9 +10,12 @@
       "implementation_proofs": {
         "roformer-operator-set": {
           "xpu": "ops"
+        },
+        "audio_separator:sep_melband_kim": {
+          "xpu": "end_to_end"
         }
       },
-      "note_he": "הפרדה: תאימות אופרטורים אומתה על xpu; מודל RoFormer/PolarFormer מלא טרם אומת, לכן מסלול הייצור נשאר על המעבד."
+      "note_he": "הפרדה: מודל Mel-Band RoFormer הראשי (sep_melband_kim דרך audio-separator) אומת מקצה לקצה על Intel XPU ב-Phase 2. ההוכחה הגנרית נשארת ברמת אופרטורים; רק המימוש המדויק רשאי להשתמש ב-XPU."
     },
     "f0": {
       "proofs": {

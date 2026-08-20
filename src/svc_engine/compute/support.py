@@ -49,6 +49,9 @@ class ProofLevel(StrEnum):
 MIN_PROOF = ProofLevel.END_TO_END
 
 
+_PROOF_ORDER = (ProofLevel.NONE, ProofLevel.OPS, ProofLevel.END_TO_END)
+
+
 @dataclass(frozen=True)
 class ComponentSupport:
     component: Component
@@ -63,12 +66,30 @@ class ComponentSupport:
             return ProofLevel.END_TO_END  # CPU is the baseline, always available
         return self.proofs.get(backend, ProofLevel.NONE)
 
+    def implementation_proof(
+        self, implementation: str, backend: ComputeBackend
+    ) -> ProofLevel:
+        """Proof for one exact implementation, never inherited from a sibling model."""
+        if backend is ComputeBackend.CPU:
+            return ProofLevel.END_TO_END
+        per_backend = self.implementation_proofs.get(implementation, {})
+        return per_backend.get(backend, ProofLevel.NONE)
+
     def allows(self, backend: ComputeBackend) -> bool:
-        order = (ProofLevel.NONE, ProofLevel.OPS, ProofLevel.END_TO_END)
-        return order.index(self.proof(backend)) >= order.index(MIN_PROOF)
+        return _PROOF_ORDER.index(self.proof(backend)) >= _PROOF_ORDER.index(MIN_PROOF)
+
+    def allows_implementation(self, implementation: str, backend: ComputeBackend) -> bool:
+        return _PROOF_ORDER.index(
+            self.implementation_proof(implementation, backend)
+        ) >= _PROOF_ORDER.index(MIN_PROOF)
 
     def allowed_backends(self) -> set[ComputeBackend]:
         return {b for b in ComputeBackend if self.allows(b)}
+
+    def allowed_backends_for_implementation(self, implementation: str) -> set[ComputeBackend]:
+        return {
+            b for b in ComputeBackend if self.allows_implementation(implementation, b)
+        }
 
 
 @dataclass(frozen=True)
@@ -84,8 +105,23 @@ class SupportMatrix:
         component: Component,
         manager: DeviceManager,
     ) -> DeviceInfo:
-        """Fastest backend this component is production-proven on."""
+        """Fastest backend this component is generically production-proven on."""
         return manager.select(self.get(component).allowed_backends())
+
+    def device_for_implementation(
+        self,
+        component: Component,
+        implementation: str,
+        manager: DeviceManager,
+    ) -> DeviceInfo:
+        """Fastest backend proven for this exact model/implementation.
+
+        A successful Mel-Band RoFormer run must not authorize an unrelated
+        RoFormer checkpoint, cleanup model, RMVPE, or RVC model merely because
+        their operator families overlap.
+        """
+        support = self.get(component)
+        return manager.select(support.allowed_backends_for_implementation(implementation))
 
     def to_dict(self) -> dict:
         return {

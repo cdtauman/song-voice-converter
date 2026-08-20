@@ -1,0 +1,370 @@
+{
+  "version": 1,
+  "note": "Licences verified against the HuggingFace API on 2026-08-17. Every URL was reachability-checked the same day. Redistributable model files are SHA-256 pinned. Do not add a model here without both licence provenance and an integrity decision. See docs/models.md section 1.",
+  "models": {
+    "sep_melband_kim": {
+      "kind": "separation",
+      "backend": "audio_separator",
+      "engine_model": "vocals_mel_band_roformer.ckpt",
+      "display_name_he": "הפרדה — איכות גבוהה (Mel-Band Roformer)",
+      "stems": ["vocals", "instrumental"],
+      "sdr": 12.5967,
+      "license": {
+        "spdx": "MIT",
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/KimberleyJSN/melbandroformer -> cardData.license",
+        "note_he": "רישיון MIT מאומת — מותר להפצה."
+      },
+      "note_he": "מודל ההפרדה הראשי. ה-SDR הגבוה ביותר מבין המועמדים שנבדקו, וגם היחיד עם רישיון מתירני מאומת.",
+      "files": [
+        {
+          "name": "vocals_mel_band_roformer.ckpt",
+          "size_bytes": 913106900,
+          "sha256": "87201f4d31afb5bc79993230fc49446918425574db48c01c405e44f365c7559e",
+          "urls": [
+            "https://huggingface.co/KimberleyJSN/melbandroformer/resolve/main/MelBandRoformer.ckpt"
+          ]
+        },
+        {
+          "name": "vocals_mel_band_roformer.yaml",
+          "size_bytes": 944,
+          "sha256": "b958b29c8f7195f0d86bee6759a33980db675c4ecaf2fcaa80fa125828e6cd38",
+          "urls": [
+            "https://huggingface.co/lainlives/audio-separator-models-old/resolve/49523422a02b68806a4471ab8806fc23c68a52c5/vocals_mel_band_roformer.yaml",
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/vocals_mel_band_roformer.yaml"
+          ]
+        }
+      ]
+    },
+
+    "sep_bs_roformer_1297": {
+      "kind": "separation",
+      "backend": "audio_separator",
+      "engine_model": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+      "display_name_he": "הפרדה — מהיר (BS-Roformer)",
+      "stems": ["vocals", "instrumental"],
+      "sdr": 11.7742,
+      "license": {
+        "spdx": null,
+        "verified_at": "2026-08-17",
+        "source": "no source repository with a licence declaration was found; distributed via the UVR model repo",
+        "note_he": "אין הצהרת רישיון — לשימוש פרטי בלבד, לא ייכלל בגרסה מופצת."
+      },
+      "note_he": "קטן ומהיר משמעותית (639MB מול 913MB). ברירת המחדל לרמת האיכות 'מהיר'.",
+      "files": [
+        {
+          "name": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+          "size_bytes": 639331213,
+          "sha256": null,
+          "urls": [
+            "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/model_bs_roformer_ep_317_sdr_12.9755.ckpt"
+          ]
+        },
+        {
+          "name": "model_bs_roformer_ep_317_sdr_12.9755.yaml",
+          "size_bytes": 2273,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/model_bs_roformer_ep_317_sdr_12.9755.yaml"
+          ]
+        }
+      ]
+    },
+
+    "sep_melband_kim_ft2": {
+      "kind": "separation",
+      "backend": "audio_separator",
+      "engine_model": "mel_band_roformer_kim_ft2_unwa.ckpt",
+      "display_name_he": "הפרדה — כיוונון עדין (Kim FT2)",
+      "stems": ["vocals", "instrumental"],
+      "sdr": null,
+      "license": {
+        "spdx": null,
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/pcunwa/Kim-Mel-Band-Roformer-FT -> cardData.license is absent",
+        "note_he": "אין הצהרת רישיון — לשימוש פרטי בלבד."
+      },
+      "note_he": "כיוונון עדין של המודל הראשי. משמש כשותף ל-ensemble ברמת 'איכות מרבית'.",
+      "files": [
+        {
+          "name": "mel_band_roformer_kim_ft2_unwa.ckpt",
+          "size_bytes": 913100690,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/pcunwa/Kim-Mel-Band-Roformer-FT/resolve/main/kimmel_unwa_ft2.ckpt"
+          ]
+        },
+        {
+          "name": "config_mel_band_roformer_kim_ft_unwa.yaml",
+          "size_bytes": 1721,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/config_mel_band_roformer_kim_ft_unwa.yaml"
+          ]
+        }
+      ]
+    },
+
+    "karaoke_aufr33_viperx": {
+      "kind": "karaoke",
+      "backend": "audio_separator",
+      "engine_model": "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt",
+      "display_name_he": "הפרדת שירה ראשית מווקאלים מלווים",
+      "stems": ["lead", "backing"],
+      "sdr": 8.44766,
+      "license": {
+        "spdx": null,
+        "verified_at": "2026-08-17",
+        "source": "no source repository with a licence declaration was found",
+        "note_he": "אין הצהרת רישיון — לשימוש פרטי בלבד."
+      },
+      "note_he": "מפריד את הקול הראשי מהמקהלה. רץ על הווקאל אחרי ההפרדה הראשית.",
+      "files": [
+        {
+          "name": "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt",
+          "size_bytes": 913096801,
+          "sha256": null,
+          "urls": [
+            "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
+          ]
+        },
+        {
+          "name": "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml",
+          "size_bytes": 1726,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml"
+          ]
+        }
+      ]
+    },
+
+    "dereverb_anvuew": {
+      "kind": "dereverb",
+      "backend": "audio_separator",
+      "engine_model": "dereverb_mel_band_roformer_anvuew_sdr_19.1729.ckpt",
+      "display_name_he": "הסרת הדהוד",
+      "stems": ["noreverb", "reverb"],
+      "sdr": 19.1729,
+      "license": {
+        "spdx": "GPL-3.0",
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/anvuew/dereverb_mel_band_roformer -> cardData.license",
+        "note_he": "רישיון GPL-3.0 — אסור בגרסה מופצת. זמין רק בהפעלה מפורשת לשימוש פרטי."
+      },
+      "note_he": "מחזיר גם את שכבת ההדהוד בנפרד — היא הקלט לאסטרטגיית המרחב האקוסטי ב-Phase 6.",
+      "files": [
+        {
+          "name": "dereverb_mel_band_roformer_anvuew_sdr_19.1729.ckpt",
+          "size_bytes": 913107578,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/anvuew/dereverb_mel_band_roformer/resolve/main/dereverb_mel_band_roformer_anvuew_sdr_19.1729.ckpt"
+          ]
+        },
+        {
+          "name": "dereverb_mel_band_roformer_anvuew.yaml",
+          "size_bytes": 1846,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/dereverb_mel_band_roformer_anvuew.yaml"
+          ]
+        }
+      ]
+    },
+
+    "deecho_sucial_v2": {
+      "kind": "deecho",
+      "backend": "audio_separator",
+      "engine_model": "dereverb-echo_mel_band_roformer_sdr_13.4843_v2.ckpt",
+      "display_name_he": "הסרת הד",
+      "stems": ["dry", "wet"],
+      "sdr": 13.4843,
+      "license": {
+        "spdx": "CC-BY-NC-SA-4.0",
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/Sucial/Dereverb-Echo_Mel_Band_Roformer -> cardData.license",
+        "note_he": "רישיון לא-מסחרי — אסור בגרסה מופצת. זמין רק בהפעלה מפורשת לשימוש פרטי."
+      },
+      "files": [
+        {
+          "name": "dereverb-echo_mel_band_roformer_sdr_13.4843_v2.ckpt",
+          "size_bytes": 455862568,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/Sucial/Dereverb-Echo_Mel_Band_Roformer/resolve/main/dereverb_echo_mbr_v2_sdr_dry_13.4843.ckpt"
+          ]
+        },
+        {
+          "name": "config_dereverb-echo_mel_band_roformer_sdr_13.4843_v2.yaml",
+          "size_bytes": 1106,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/config_dereverb-echo_mel_band_roformer_sdr_13.4843_v2.yaml"
+          ]
+        }
+      ]
+    },
+
+    "denoise_aufr33": {
+      "kind": "denoise",
+      "backend": "audio_separator",
+      "engine_model": "denoise_mel_band_roformer_aufr33_sdr_27.9959.ckpt",
+      "display_name_he": "ניקוי רעש",
+      "stems": ["dry", "noise"],
+      "sdr": 27.9959,
+      "license": {
+        "spdx": null,
+        "verified_at": "2026-08-17",
+        "source": "huggingface.co/api/models/poiqazwsx/melband-roformer-denoise -> cardData.license is absent",
+        "note_he": "אין הצהרת רישיון — לשימוש פרטי בלבד."
+      },
+      "files": [
+        {
+          "name": "denoise_mel_band_roformer_aufr33_sdr_27.9959.ckpt",
+          "size_bytes": 913097300,
+          "sha256": null,
+          "urls": [
+            "https://huggingface.co/poiqazwsx/melband-roformer-denoise/resolve/main/denoise_mel_band_roformer_aufr33_sdr_27.9959.ckpt"
+          ]
+        },
+        {
+          "name": "denoise_mel_band_roformer_aufr33_sdr_27.9959_config.yaml",
+          "size_bytes": 1621,
+          "sha256": null,
+          "urls": [
+            "https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs/denoise_mel_band_roformer_aufr33_sdr_27.9959_config.yaml"
+          ]
+        }
+      ]
+    },
+
+    "f0_rmvpe": {
+      "kind": "f0",
+      "backend": "rmvpe",
+      "engine_model": "rmvpe.pt",
+      "display_name_he": "זיהוי גובה מדויק (RMVPE)",
+      "stems": [],
+      "sdr": null,
+      "license": {
+        "spdx": "MIT",
+        "verified_at": "2026-08-18",
+        "source": "huggingface.co/api/models/lj1995/VoiceConversionWebUI -> cardData.license == 'mit'; network reachability + SHA-256 checked 2026-08-18",
+        "note_he": "רישיון MIT מאומת — מותר להפצה. משקולות RMVPE להפקת עקומת הגובה."
+      },
+      "note_he": "מודל זיהוי הגובה המדויק לניתוח ולהמרה הסופית. רץ על המעבד עד שיאומת מקצה לקצה על מאיץ. קוד ה-inference מוטמע מ-RVC (MIT) — ראה docs/third-party.md.",
+      "files": [
+        {
+          "name": "rmvpe.pt",
+          "size_bytes": 181184272,
+          "sha256": "6d62215f4306e3ca278246188607209f09af3dc77ed4232efdd069798c4ec193",
+          "urls": [
+            "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/rmvpe.pt"
+          ]
+        }
+      ]
+    },
+
+    "content_hubert": {
+      "kind": "hubert",
+      "backend": "rvc_v2",
+      "engine_model": "hubert_base.pt",
+      "display_name_he": "מקודד תוכן הדיבור (HuBERT/ContentVec)",
+      "stems": [],
+      "sdr": null,
+      "license": {
+        "spdx": "MIT",
+        "verified_at": "2026-08-18",
+        "source": "huggingface.co/api/models/lj1995/VoiceConversionWebUI -> cardData.license == 'mit'; same repo as rmvpe.pt. Reachability + size checked 2026-08-18 (HTTP 200, 189507909 bytes).",
+        "note_he": "רישיון MIT מאומת — מותר להפצה. מקודד התוכן שההמרה מותנית בו, משותף לכל הקולות."
+      },
+      "note_he": "מקודד HuBERT שמפריד את תוכן השירה מהגוון של הזמר המקורי (Phase 5). ה-sha256 ננעל מול הקובץ שהורד (189.5MB). פורמט הטעינה הסופי (fairseq מול Transformers) ננעל יחד עם מטריצת התלויות של ההמרה במחשב הפיתוח — ראה docs/phase-reports/phase-5.md.",
+      "files": [
+        {
+          "name": "content_hubert/hubert_base.pt",
+          "size_bytes": 189507909,
+          "sha256": "f54b40fd2802423a5643779c4861af1e9ee9c1564dc9d32f54f20b5ffba7db96",
+          "urls": [
+            "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/hubert_base.pt"
+          ]
+        }
+      ]
+    },
+
+    "rvc_training_runtime": {
+      "kind": "training",
+      "backend": "applio",
+      "engine_model": "contentvec",
+      "display_name_he": "משאבי אימון RVC",
+      "stems": [],
+      "sdr": null,
+      "license": {
+        "spdx": "MIT",
+        "verified_at": "2026-08-19",
+        "source": "huggingface.co/api/models/IAHispano/Applio revision 774d3d1f46102030638bc27d3a95cda6f68cf293; repository license MIT",
+        "note_he": "משקולות החילוץ של Applio; SHA-256 נעול ומותר להפצה."
+      },
+      "note_he": "ContentVec ו-RMVPE הנדרשים להכנת מאפייני האימון. קוד Applio עצמו נמשך מקומיט נעול ונבדק בנפרד.",
+      "files": [
+        {
+          "name": "training/applio/rvc/models/embedders/contentvec/pytorch_model.bin",
+          "size_bytes": 378342945,
+          "sha256": "d8dd400e054ddf4e6be75dab5a2549db748cc99e756a097c496c099f65a4854e",
+          "urls": [
+            "https://huggingface.co/IAHispano/Applio/resolve/774d3d1f46102030638bc27d3a95cda6f68cf293/Resources/embedders/contentvec/pytorch_model.bin"
+          ]
+        },
+        {
+          "name": "training/applio/rvc/models/embedders/contentvec/config.json",
+          "size_bytes": 1388,
+          "sha256": "2ddde063b795d38d9051a7215a092fecf4cfe148b54251e38de51d88d356898b",
+          "urls": [
+            "https://huggingface.co/IAHispano/Applio/resolve/774d3d1f46102030638bc27d3a95cda6f68cf293/Resources/embedders/contentvec/config.json"
+          ]
+        },
+        {
+          "name": "training/applio/rvc/models/predictors/rmvpe.pt",
+          "size_bytes": 181184272,
+          "sha256": "6d62215f4306e3ca278246188607209f09af3dc77ed4232efdd069798c4ec193",
+          "urls": [
+            "https://huggingface.co/IAHispano/Applio/resolve/774d3d1f46102030638bc27d3a95cda6f68cf293/Resources/predictors/rmvpe.pt"
+          ]
+        }
+      ]
+    },
+
+    "titan_medium_48k": {
+      "kind": "training",
+      "backend": "applio",
+      "engine_model": "TITAN-Medium-48k",
+      "display_name_he": "מודל בסיס TITAN Medium 48k",
+      "stems": [],
+      "sdr": null,
+      "license": {
+        "spdx": "Apache-2.0",
+        "verified_at": "2026-08-19",
+        "source": "huggingface.co/api/models/blaise-tk/TITAN revision cb72bb5bb05a85f07b17a33b014b694eaa9525f7 -> cardData.license apache-2.0",
+        "note_he": "מודל הבסיס TITAN ברישיון Apache-2.0; מותר להפצה."
+      },
+      "note_he": "זוג checkpoints של generator/discriminator ל-fine-tuning מקומי ב-48kHz.",
+      "files": [
+        {
+          "name": "training/applio/rvc/models/pretraineds/titan/D-f048k-TITAN-Medium.pth",
+          "size_bytes": 857126469,
+          "sha256": "4999a5b66aec0a9ab7e845063eeb242e47a611ab0e6260fb0b5ca44a7c5bbc44",
+          "urls": [
+            "https://huggingface.co/blaise-tk/TITAN/resolve/cb72bb5bb05a85f07b17a33b014b694eaa9525f7/models/medium/48k/pretrained/D-f048k-TITAN-Medium.pth"
+          ]
+        },
+        {
+          "name": "training/applio/rvc/models/pretraineds/titan/G-f048k-TITAN-Medium.pth",
+          "size_bytes": 452338845,
+          "sha256": "51a6dc93687f7e1a6051be3dec958289958c9c738d5c520e4fa956e7886ee153",
+          "urls": [
+            "https://huggingface.co/blaise-tk/TITAN/resolve/cb72bb5bb05a85f07b17a33b014b694eaa9525f7/models/medium/48k/pretrained/G-f048k-TITAN-Medium.pth"
+          ]
+        }
+      ]
+    }
+  }
+}

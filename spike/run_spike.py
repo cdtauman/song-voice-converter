@@ -54,6 +54,8 @@ PIPELINE = [
     "python-stretch",
     "audio-separator[cpu]",
     "torchfcpe",
+    "transformers",
+    "faiss-cpu",
 ]
 
 PIPELINE_GPU = [
@@ -66,6 +68,8 @@ PIPELINE_GPU = [
     "python-stretch",
     "audio-separator[gpu]",
     "torchfcpe",
+    "transformers",
+    "faiss-cpu",
 ]
 
 
@@ -210,7 +214,7 @@ def build_candidate(c: Candidate, uv: str) -> Outcome:
             if name.lower() in {
                 "torch", "numpy", "scipy", "librosa", "soundfile", "soxr",
                 "pyloudnorm", "python-stretch", "audio-separator", "torchfcpe",
-                "onnxruntime", "onnxruntime-gpu",
+                "onnxruntime", "onnxruntime-gpu", "transformers", "faiss-cpu",
             }:
                 out.resolved[name] = ver
 
@@ -229,7 +233,7 @@ def build_candidate(c: Candidate, uv: str) -> Outcome:
         return out
 
     required = ("torch", "numpy", "soundfile", "librosa", "pyloudnorm",
-                "pitch_shift", "audio_separator", "ffmpeg")
+                "pitch_shift", "audio_separator", "transformers", "faiss", "ffmpeg")
     failed = [k for k in required if not out.smoke.get("probes", {}).get(k, {}).get("ok")]
     if failed:
         out.status = "fail"
@@ -320,6 +324,20 @@ def write_constraints(out: Outcome, dest: Path) -> None:
         "",
     ]
     dest.write_text("\n".join(header + out.freeze) + "\n", encoding="utf-8")
+
+
+def write_pipeline_lock(uv: str, candidate: Candidate, constraints: Path, dest: Path) -> None:
+    """Generate the installable Phase 2-5 lock from the Spike winner's matrix."""
+    cmd = [
+        uv, "pip", "compile", "--python-version", candidate.python,
+        "--index-strategy", "unsafe-best-match", "--extra", "rvc",
+        str(constraints), str(ROOT / "pyproject.toml"), "-o", str(dest),
+    ]
+    if candidate.torch_index:
+        cmd += ["--index-url", candidate.torch_index, "--extra-index-url", "https://pypi.org/simple"]
+    result = run(cmd, timeout=1800)
+    if result.returncode != 0:
+        raise RuntimeError(f"RVC lock generation failed: {result.stderr.strip()[:600]}")
 
 
 def write_matrix(
@@ -484,8 +502,12 @@ def main(argv: list[str] | None = None) -> int:
     winner = passed[0] if passed else None
 
     if winner:
-        write_constraints(winner, ROOT / "constraints.txt")
+        constraints_path = ROOT / "constraints.txt"
+        write_constraints(winner, constraints_path)
+        write_pipeline_lock(uv, next(c for c in CANDIDATES if c.id == winner.candidate),
+                            constraints_path, ROOT / "rvc-requirements.lock")
         print(f"\nconstraints.txt written from candidate '{winner.candidate}'")
+        print("rvc-requirements.lock written from the same pipeline matrix")
     else:
         print("\nNo candidate passed. constraints.txt not written.")
 

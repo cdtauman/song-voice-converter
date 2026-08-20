@@ -19,6 +19,7 @@ class ErrorCode(StrEnum):
     MODEL_CORRUPT = "E_MODEL_CORRUPT"
     AUDIO_UNSUPPORTED = "E_AUDIO_UNSUPPORTED"
     VOICE_CORRUPT = "E_VOICE_CORRUPT"
+    CONSENT_REQUIRED = "E_CONSENT_REQUIRED"
     DISK_FULL = "E_DISK_FULL"
     NO_VOCALS = "E_NO_VOCALS"
     FFMPEG_MISSING = "E_FFMPEG_MISSING"
@@ -63,6 +64,10 @@ _MESSAGES: dict[ErrorCode, UserMessage] = {
     ErrorCode.VOICE_CORRUPT: UserMessage(
         "קובץ הקול פגום או לא שלם.",
         "אפשר להסיר את הקול ולהוסיף אותו מחדש.",
+    ),
+    ErrorCode.CONSENT_REQUIRED: UserMessage(
+        "אפשר להוסיף אך ורק קול שיצרת בעצמך או שיש לך רשות מפורשת להשתמש בו.",
+        "אשר שיש לך הרשאה לקול הזה ונסה שוב.",
     ),
     ErrorCode.DISK_FULL: UserMessage(
         "אין מספיק מקום פנוי בדיסק.",

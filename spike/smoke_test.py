@@ -284,6 +284,28 @@ def _torchfcpe() -> dict[str, Any]:
     return {"importable": True, "version": getattr(torchfcpe, "__version__", "?")}
 
 
+@probe("transformers")
+def _transformers() -> dict[str, Any]:
+    import transformers
+    from transformers import HubertModel
+
+    return {"version": transformers.__version__, "has_hubert": HubertModel is not None}
+
+
+@probe("faiss")
+def _faiss() -> dict[str, Any]:
+    import faiss
+    import numpy as np
+
+    index = faiss.IndexFlatL2(2)
+    index.add(np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float32))
+    distances, indices = index.search(np.array([[0.1, 0.1]], dtype=np.float32), 1)
+    return {
+        "version": getattr(faiss, "__version__", "?"),
+        "search_ok": bool(indices[0, 0] == 0 and distances[0, 0] >= 0),
+    }
+
+
 @probe("onnxruntime")
 def _onnxruntime() -> dict[str, Any]:
     import onnxruntime as ort

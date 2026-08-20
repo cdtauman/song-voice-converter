@@ -80,6 +80,7 @@ class Settings:
     check_updates: bool = True
     allow_model_downloads: bool = True
     language: str = "he"
+    theme: str = "system"  # system | light | dark
     advanced_mode: bool = False
     _version: int = field(default=1)
 

@@ -1,0 +1,77 @@
+{
+  "phase": 10,
+  "generated_at": "2026-08-19T07:03:04Z",
+  "matrix": {
+    "runs": 4,
+    "all_ok": true,
+    "artifacts": [
+      "results.csv",
+      "report.html",
+      "manifest.json"
+    ],
+    "artifacts_ok": true,
+    "blind_aliases": [
+      "גרסה 1",
+      "גרסה 2"
+    ],
+    "telemetry": [
+      "seconds",
+      "peak_ram_mb",
+      "peak_vram_mb",
+      "status",
+      "settings"
+    ]
+  },
+  "tuning": {
+    "cases": [
+      {
+        "case": 1,
+        "manual_score": 99.42068549229532,
+        "winner": "candidate-1",
+        "winner_score": 99.42068549229532,
+        "at_least_manual": true
+      },
+      {
+        "case": 2,
+        "manual_score": -161.49798276817796,
+        "winner": "candidate-3",
+        "winner_score": 99.19246983526543,
+        "at_least_manual": true
+      },
+      {
+        "case": 3,
+        "manual_score": 99.31669157837115,
+        "winner": "candidate-1",
+        "winner_score": 99.31669157837115,
+        "at_least_manual": true
+      },
+      {
+        "case": 4,
+        "manual_score": -161.49723799991608,
+        "winner": "candidate-3",
+        "winner_score": 99.42645586097139,
+        "at_least_manual": true
+      },
+      {
+        "case": 5,
+        "manual_score": 99.22437688397882,
+        "winner": "candidate-1",
+        "winner_score": 99.22437688397882,
+        "at_least_manual": true
+      }
+    ],
+    "objective_at_least_manual": 5,
+    "human_blind_acceptance": "pending licensed test songs and listeners"
+  },
+  "isolation": {
+    "core_import_violations": [],
+    "hatch_build_isolated": true,
+    "constraints_sha256": "e1e580e99e5760ee3e16576818135815404c8ee6a6fb142f5e341b61db3c0fc3",
+    "runtimes": {
+      "seed": "not bootstrapped",
+      "ddsp": "not bootstrapped"
+    },
+    "result": "pass"
+  },
+  "result": "pass"
+}

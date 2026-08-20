@@ -36,6 +36,15 @@ jobs:
       - name: Install project
         run: uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
 
+      # Audio fixtures exercise the real ffmpeg/ffprobe boundary.  Use the
+      # exact checksum-verified LGPL build that the release ships; Chocolatey
+      # builds may omit the Soxr resampler required by the audio contract.
+      - name: Provision release FFmpeg
+        shell: pwsh
+        run: |
+          & packaging\fetch-dependencies.ps1
+          (Resolve-Path "packaging\build\dependencies\ffmpeg\bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Lint (ruff)
         run: .venv\Scripts\python.exe -m ruff check .
 
@@ -46,8 +55,13 @@ jobs:
         run: .venv\Scripts\python.exe -m pytest
 
       # Approved policy: no copyleft dependency may enter the distributable core.
-      - name: Licence check
+      - name: Licence check (dependencies)
         run: .venv\Scripts\python.exe tools\check_licenses.py
+
+      # Model weights carry their own licences, separate from the code that runs
+      # them. A new catalogue entry without a recorded audit fails here.
+      - name: Licence check (model catalogue)
+        run: .venv\Scripts\python.exe tools\check_model_catalogue.py
 
       # The architectural boundaries are enforced by tests, but run them alone
       # too so a failure here is unmistakable in the log.

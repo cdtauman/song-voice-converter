@@ -1,6 +1,6 @@
 # ארכיטקטורה ותכנון UX
 
-**עודכן:** 16 באוגוסט 2026 — סבב ביקורת ראשון.
+**עודכן:** 19 באוגוסט 2026 — Phase 11.
 
 ---
 
@@ -67,6 +67,8 @@ song-voice-converter/
 │   │   ├── __init__.py
 │   │   ├── rpc/                # פרוטוקול התקשורת + נקודת כניסה
 │   │   ├── jobs/               # JobRunner, Step, Cache, Recovery
+│   │   ├── projects/           # שמירה/טעינה אטומית של פרויקט
+│   │   ├── history/            # היסטוריית עבודות ב-SQLite
 │   │   ├── audio/              # io, resample, loudness
 │   │   ├── separation/         # backends, ensemble, cleanup
 │   │   ├── analysis/           # f0, range, key, preview_picker
@@ -218,6 +220,15 @@ hint   = DeviceHint.from_device(device)
 **סביבה שלישית — `env-bench`:** מבודדת לחלוטין, לא נארזת, מכילה את המנועים
 לבנצ'מרק בלבד (Seed-VC ודומיו). **אין לה שום נגיעה במטריצה הנעולה של הליבה.**
 
+Phase 10 מממשת את הגבול כתיקיית coordinator אחת שבתוכה runtime נפרד לכל מנוע:
+`env-bench/runtimes/seed/.venv` ו־`env-bench/runtimes/ddsp/.venv`. ההפרדה הפנימית
+נדרשת כי מטריצות Torch/NumPy של המנועים סותרות זו את זו. הליבה מפעילה רק פקודת
+subprocess שמחזירה WAV; אין import, dependency או checkpoint משותף. Hatch אורז
+במפורש רק `src/svc_engine` ו־`src/svc_app`, וכל `runtimes/` מוחרג מ־Git.
+כל variant מוכנס ב־Windows ל־Job Object עם `KILL_ON_JOB_CLOSE`: timeout מסיים
+וממתין לכל העץ, ו־RAM/VRAM מסוכמים מכל ה־PIDs ב־Job. ב־POSIX משמשת session/process
+group נפרדת עם גילוי descendants כ־fallback.
+
 ---
 
 ## 4. מודל המשימה (Job)
@@ -240,6 +251,48 @@ Step:
 
 **ביטול:** דגל ביטול נבדק בין צעדים ובתוך לולאות ארוכות. אם לא נענה תוך 3 שניות —
 התהליך נהרג בכוח והקבצים הזמניים מנוקים.
+
+### מימוש Phase 7
+
+- `JobRunner` ממיין את הגרף טופולוגית, דוחה תלות חסרה/מחזור, ומשקלל התקדמות
+  כוללת מהתקדמות כל צעד. פעולת צעד מקבלת רק `StepContext`, נתיבי תלויות ו־scratch
+  ASCII; היא אינה יודעת על הממשק.
+- מפתח cache הוא SHA-256 של מזהה+גרסת הצעד, פרמטרים קנוניים, **תוכן** קובצי הקלט
+  ומפתחות התלויות. שינוי פרמטר בצעד מאוחר אינו מבטל cache של קודמיו.
+- תוצרי צעד נכתבים תחילה ל־scratch, מועתקים לתיקייה זמנית, נבדקים בגודל וב־SHA-256,
+  ורק אז מתפרסמים אטומית. manifest חלקי או פגום לעולם אינו cache hit.
+- `jobs/<job_id>.json` נכתב ב־temp+`os.replace` לפני ואחרי כל מעבר מצב. אחרי kill,
+  תוצרי קודמים מגיעים מה־cache והצעד שהיה `running` רץ מחדש.
+- `CancellationToken` הוא המסלול הנקי. בגבול app/engine נסגרת בקשת ה־stdio;
+  worker שלא משתף פעולה מקבל terminate/kill בתוך deadline כולל של שלוש שניות.
+- `work/jobs/` מכיל רק scratch. הצלחה, כשל וביטול מנקים אותו; אחרי hard-kill הוא
+  נשאר מקושר ל־snapshot ולכן אינו יתום, ונמחק בתחילת ההמשך. ניקוי תחזוקה מסיר רק
+  תיקיות שאינן שייכות לעבודה recoverable.
+- `cache/steps/` נאכף ב־LRU לפי `Settings.keep_cache_gb`; מפתחות של הריצה הנוכחית
+  מוגנים מפינוי. תקלה בניקוי cache ישן אינה הופכת עבודה שכבר הושלמה לכישלון.
+- `projects/` משתמש ב־JSON גרסאי אטומי ובעותק last-known-good; `db.sqlite` שומר
+  היסטוריית מצב/התקדמות ב־WAL. RPC חושף list/load/save, recovery, history ו־cleanup
+  כנתונים בלבד — לעולם לא callable שמגיע מהממשק.
+
+### מימוש Phase 8
+
+- `EngineClient` משגר את `svc serve` כתהליך נפרד. כל בקשה מסתיימת ב־Response יחיד;
+  פעולות ארוכות יכולות לשלוח לפניו אירועי `progress` מזוהים לפי request id. ה־GUI
+  קורא רק JSON ואינו מייבא `torch`, ‏`numpy` או ספריית AI אחרת.
+- `workflows/cover.py` בונה לכל Preview וקאבר גרף `JobRunner` אמיתי: `separate` →
+  `analyze` → `render` → `deliver`. כל צעד מפרסם קבצים ל־`StepCache`; בקשת השחזור
+  נשמרת אטומית תחת `jobs/requests/`, ולכן hard-kill ממשיך מהצעד האחרון שהושלם.
+  Preview נכתב ל־`work/previews`; קאבר מלא נכתב ליד השיר בשם שאינו דורס קובץ קיים.
+- `jobs.recoverable` מצרף לעבודת קאבר את המקור, הקול וסוג העבודה. פתיחת ה־GUI
+  מציעה להמשיך את העבודה; `covers.resume` משחזר את אותו גרף ואותם פרמטרים.
+- האשף הוא מכונת מצבים מפורשת: שיר → קול → איכות → עיבוד → המלצה → Preview →
+  תוצאה. ניווט למסכים אחרים נעול בזמן עיבוד; ביטול סוגר את תהליך המנוע והקריאה
+  החסומה משתחררת, בלי להקפיא את event loop של Qt.
+- כל הטקסט בממשק עברי ומוגדר RTL ברמת `QApplication` ו־`MainWindow`. נתיבי קבצים,
+  שמות פורמטים ומספרים נשארים ביחידות תצוגה מבודדות. `tools/bench_gui.py` מצלם את
+  שבעת מצבי האשף ואת קולות/פרויקטים/הגדרות ומאמת ירושת RTL בכל עץ הווידג'טים.
+- `i18n/he.py` ממפה כל `ErrorCode` לכותרת אנושית ולפעולה מוצעת. פרטי חריגה ו־stack
+  trace נשארים במנוע ובלוג; הם אינם מוצגים בחלון.
 
 **טיפול ב-OOM:** מנהל VRAM מרכזי. כשנתפסת שגיאת OOM:
 `chunk ÷ 2` → נסה שוב → `batch = 1` → נסה שוב → `overlap` מינימלי → נסה שוב → CPU.
@@ -469,3 +522,18 @@ voices/<voice_id>/
 - היציאה היחידה לאינטרנט: הורדת מודלים ובדיקת עדכונים — שתיהן ניתנות לכיבוי.
 - הלוגים לא מכילים תוכן שמע, רק שמות קבצים ומדדים.
 - מסך "פרטיות" בהגדרות שמסביר בדיוק את זה בעברית.
+
+---
+
+## 11. אריזה ועדכונים
+
+PyInstaller בונה `onedir` עם Python 3.11, Torch/Intel XPU, Qt ו־ffmpeg LGPL
+מוטבעים. `SongVoiceLauncher.exe` הוא נקודת הכניסה היציבה; הוא מחיל update ממתין
+לפני פתיחת `SongVoice.exe`. אותו executable מפעיל במצבים פנימיים את שרת המנוע
+ואת worker האימון, ולכן אף subprocess אינו תלוי ב־`python.exe` חיצוני או מציג console.
+
+הפעלה ראשונה כותבת `setup-complete.json` רק אחרי זיהוי backend, אימות runtime,
+התקנת מודלי הליבה לפי size+SHA והרצת health. ה־offline installer מזין מראש את
+אותו model store. updater מוריד manifest ו־ZIP ב־HTTPS, מאמת size+SHA, מחלץ לתיקיית
+staging בטוחה, מגבה קבצים מוחלפים ושומר transaction receipt; כל כשל מחזיר את
+ההתקנה למצב הקודם. `env-bench` וכל מנוע benchmark מוחרגים מה־spec ומה־installer.

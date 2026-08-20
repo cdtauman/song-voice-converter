@@ -1,0 +1,39 @@
+name = "RVC v2 vs DDSP-SVC vs Seed-VC"
+input_audio = "../audio/licensed-preview.wav"
+repetitions = 1
+timeout_seconds = 3600
+seed = 10
+
+# Replace VOICE paths before running. Outputs are supplied by svc-bench through
+# the {output} placeholder; the input placeholder resolves the licensed clip.
+[[variants]]
+id = "rvc-v2"
+label = "RVC v2"
+backend = "RVCv2Backend"
+license = "MIT"
+environment = "core"
+command = ["svc", "convert", "{input}", "--voice", "VOICE_ID", "--out", "{output}", "--seconds", "30", "--quiet"]
+
+[variants.settings]
+index_rate = 0.7
+protect = 0.33
+
+[[variants]]
+id = "ddsp-svc"
+label = "DDSP-SVC"
+backend = "env-bench adapter"
+license = "MIT"
+environment = "env-bench/ddsp"
+command = ["python", "env-bench/adapter.py", "ddsp", "--input", "{input}", "--output", "{output}", "--model", "DDSP_MODEL.pt"]
+
+[[variants]]
+id = "seed-vc"
+label = "Seed-VC reference"
+backend = "env-bench adapter"
+license = "GPL-3.0-only"
+environment = "env-bench/seed"
+command = ["python", "env-bench/adapter.py", "seed", "--input", "{input}", "--output", "{output}", "--reference", "CONSENTED_REFERENCE.wav", "--diffusion-steps", "30"]
+
+[variants.settings]
+production_allowed = false
+archived_reference = true

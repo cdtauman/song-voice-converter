@@ -1,6 +1,6 @@
 [project]
 name = "songvoice"
-version = "0.1.0"
+version = "1.0.0"
 description = "SongVoice - local high-quality singing voice conversion for Windows"
 # Locked to 3.11 by the Phase 1 Compatibility Spike, not by preference.
 # On 3.12 the resolver picks librosa 1.0.0, which dropped `audioread`, while
@@ -9,24 +9,60 @@ description = "SongVoice - local high-quality singing voice conversion for Windo
 requires-python = ">=3.11,<3.12"
 license = { text = "Proprietary" }
 
-# Phase 1 keeps runtime dependencies deliberately minimal.
-# The heavy AI stack (torch, separation, RVC) is resolved by the Compatibility
-# Spike and pinned in constraints.txt -- it is NOT declared here yet.
+# The base runtime stays torch-free but includes Phase-6's small DSP stack.
+# Heavy AI stacks are opt-in; RVC's generated lock is rvc-requirements.lock.
 dependencies = [
     "numpy>=1.26",
     "platformdirs>=4.0",
+    "pyloudnorm>=0.2",
+    "requests>=2.31",
     "rich>=13.0",
+    "scipy>=1.11",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "PySide6>=6.7,<7",
     "pytest>=8.0",
     "ruff>=0.6",
     "mypy>=1.11",
 ]
+# Optional inspection extra: `svc analyze --plot` draws the F0 curve with it.
+# Not part of the locked runtime matrix; the CLI degrades gracefully without it.
+plot = [
+    "matplotlib>=3.7",
+]
+# Desktop interface. Kept separate from the engine-only runtime so automation
+# and servers do not need to install Qt.
+gui = [
+    "PySide6>=6.7,<7",
+]
+# RVC inference is intentionally opt-in.  Install this extra together with the
+# generated constraints.txt so it uses the Phase-1-proven torch matrix.
+rvc = [
+    "torch",
+    "transformers",
+    "faiss-cpu",
+]
+# Local RVC training.  Applio source and weights are fetched, pinned and
+# checksum-verified by the engine; this extra supplies its Python runtime.
+training = [
+    "torch",
+    "torchaudio",
+    "torchfcpe",
+    "transformers",
+    "faiss-cpu",
+    "librosa",
+    "noisereduce>=3,<4",
+    "scikit-learn",
+    "tensorboard>=2.14,<3",
+    "tqdm",
+]
 
 [project.scripts]
 svc = "svc_engine.cli:main"
+songvoice = "svc_app.main:main"
+svc-bench = "svc_engine.benchmark.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -51,6 +87,15 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
+
+# Vendored RVC network (subset insertion, degree 4 -- docs/reuse-policy.md). It
+# is a faithful, near-verbatim port from RVC-Project (MIT) whose module names and
+# shapes must match the pretrained weights; re-annotating it to our style would
+# fork it from upstream and invite transcription bugs. Checked upstream and by
+# ruff/py_compile here; excluded from our strict typing like any vendor/ tree.
+[[tool.mypy.overrides]]
+module = "svc_engine.conversion.rvc.infer_pack.*"
+ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

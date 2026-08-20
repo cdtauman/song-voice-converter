@@ -18,6 +18,7 @@ from svc_engine.diag.checks import (
     check_graphics_hardware,
     check_python,
     check_xpu,
+    ffmpeg_build_is_gpl,
 )
 from svc_engine.diag.report import overall_status
 
@@ -87,6 +88,11 @@ def test_backend_interfaces_check_passes() -> None:
 
 def test_required_ffmpeg_filters_cover_the_mixing_stage() -> None:
     assert {"loudnorm", "alimiter"} <= set(REQUIRED_FFMPEG_FILTERS)
+
+
+def test_ffmpeg_gpl_build_flag_is_not_silently_missed() -> None:
+    assert ffmpeg_build_is_gpl("configuration: --enable-gpl --enable-libx264")
+    assert not ffmpeg_build_is_gpl("configuration: --disable-gpl --enable-shared")
 
 
 def test_windows_11_is_not_reported_as_windows_10() -> None:

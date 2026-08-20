@@ -10,7 +10,15 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-__all__ = ["Request", "Response", "encode", "decode_request", "decode_response"]
+__all__ = [
+    "Event",
+    "Request",
+    "Response",
+    "decode_event",
+    "decode_request",
+    "decode_response",
+    "encode",
+]
 
 PROTOCOL_VERSION = 1
 
@@ -22,8 +30,7 @@ class Request:
     params: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"v": PROTOCOL_VERSION, "id": self.id, "method": self.method,
-                "params": self.params}
+        return {"v": PROTOCOL_VERSION, "id": self.id, "method": self.method, "params": self.params}
 
 
 @dataclass(frozen=True)
@@ -43,7 +50,24 @@ class Response:
         return d
 
 
-def encode(obj: Request | Response) -> str:
+@dataclass(frozen=True)
+class Event:
+    """An in-flight notification emitted before a request's final response."""
+
+    id: str
+    event: str
+    data: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "v": PROTOCOL_VERSION,
+            "id": self.id,
+            "event": self.event,
+            "data": self.data,
+        }
+
+
+def encode(obj: Request | Response | Event) -> str:
     return json.dumps(obj.to_dict(), ensure_ascii=False) + "\n"
 
 
@@ -58,6 +82,19 @@ def decode_response(line: str) -> Response:
         return Response(id=str(d["id"]), ok=True, result=d.get("result"))
     err = d.get("error") or {}
     return Response(
-        id=str(d["id"]), ok=False,
-        error_code=err.get("code"), error_message_he=err.get("message_he"),
+        id=str(d["id"]),
+        ok=False,
+        error_code=err.get("code"),
+        error_message_he=err.get("message_he"),
+    )
+
+
+def decode_event(line: str) -> Event:
+    d = json.loads(line)
+    if "event" not in d:
+        raise ValueError("message is not an event")
+    return Event(
+        id=str(d["id"]),
+        event=str(d["event"]),
+        data=dict(d.get("data") or {}),
     )

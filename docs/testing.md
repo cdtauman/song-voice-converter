@@ -1,6 +1,6 @@
 # תוכנית בדיקות ומערכת השוואת איכות
 
-**עודכן:** 16 באוגוסט 2026 — סבב ביקורת ראשון.
+**עודכן:** 19 באוגוסט 2026 — Phase 12.
 
 **העיקרון (מעודכן):** המדדים האובייקטיביים משמשים כדי **לפסול** אפשרויות גרועות
 ולצמצם מ-10 מועמדים ל-3. **ההכרעה הסופית היא האזנה עיוורת** — היא מדד ראשי, לא נספח.
@@ -92,6 +92,14 @@
 | הריגת התהליך באמצע כל שלב | התאוששות בהפעלה הבאה |
 | כפיית OOM (chunk ענק) | סולם הנסיגה מתגבר על זה |
 | נתיב עם עברית ורווחים | עובד (או נכשל בהודעה ברורה) |
+
+**שער Phase 7:** `python tools/bench_jobs.py` מפעיל worker אמיתי בתהליך נפרד,
+מבצע `os._exit(91)` מתוך כל אחד מארבעת מיקומי הגרף המייצגים
+(`separate → analyze → convert → master`), ומקים מנוע חדש על אותו data root.
+השער עובר רק אם כל הקודמים הם cache hit, הצעד שנקטע רץ מחדש, העבודה מסתיימת,
+הרצה זהה נוספת היא 100% cache hit, ואין scratch. אותו harness מודד גם worker
+שאינו משתף פעולה ודורש terminate/kill בתוך פחות משלוש שניות. התוצאה השחזורית
+נשמרת ב־`benchmark/results/jobs/results.json`.
 
 ---
 
@@ -205,6 +213,25 @@ svc-bench run experiments/sep_models.yaml --out results/2026-08-20/
 | Vocoder: HiFi-GAN-NSF ↔ RefineGAN | Phase 10 | האם שווה את חוסר התאימות |
 | מנועי המרה: RVC v2 ↔ DDSP-SVC ↔ Seed-VC | Phase 10 | ב-`env-bench` מבודדת בלבד |
 
+### 5ג. שער Phase 10
+
+`svc-bench run <experiment.toml> --out <empty-folder>` מפיק `results.csv`,
+`report.html`, `manifest.json`, `audio/` ו־`logs/`. ה־manifest נועל SHA-256 לקלט,
+פקודות, הגדרות, רישיונות, סביבת מנוע, host ו־seed; כל ריצה שומרת זמן, peak RAM,
+peak VRAM כשזמין, exit code וכשל. הדוח כולל נגן עיוור ששומר את נקודת הזמן במעבר.
+בדיקת process-tree מפעילה adapter-הורה שמוליד ילד בעל הקצאת RAM: timeout חייב
+להעלים גם את הילד, וה־peak השמור חייב לכלול את ההקצאה שלו.
+
+`python tools/bench_phase10.py` הוא gate מכני ללא מודלים: שתי גרסאות × שתי חזרות,
+כל ארבעת artifacts, מיפוי עיוור, telemetry, ארבעה מועמדי tuning וחמש בדיקות שבהן
+הציון האוטומטי אינו נמוך מה-baseline. הוא אינו מחליף האזנה אנושית.
+
+לקבלה הסופית מריצים חמישה שירים מורשים, רושמים `automatic|manual|tie` בלי לחשוף
+זהויות, ואז מריצים `python tools/check_tuning_acceptance.py ballots.json`. ארבעה
+מקרים לפחות חייבים להיות `automatic` או `tie`. מטריצת המנועים מתחילה מהתבנית
+`benchmark/experiments/conversion_engines.example.toml`; Seed-VC מסומן GPL ונשאר
+reference בלבד בתוך `env-bench`.
+
 ### 🆕 5א. מטריצת אסטרטגיית פלייבק × גודל הזזה
 
 בגרסה הקודמת קבעתי כלל גורף: **"אף פעם לא מזיזים תופים."**
@@ -271,3 +298,39 @@ svc-bench run experiments/sep_models.yaml --out results/2026-08-20/
 | … | הפרדה | 3 | bs_leap | ensemble2 | ensemble2 | פחות דליפת גיטרה בפזמון |
 
 זה מה שימנע מאיתנו לחזור על אותן בדיקות ולשכוח מה כבר גילינו.
+
+---
+
+## 8. שערי אריזה של Phase 11
+
+`packaging/validate-dist.ps1` מאמת executable ו־launcher, מריץ GUI smoke ללא
+טרמינל, בודק ש־ffmpeg הוא LGPL ושמסנני המיקס קיימים, מסרב לכל זליגה של
+`env-bench`/Seed-VC/DDSP ומפיק `SHA256SUMS.txt`.
+
+`packaging/verify-clean-machine.ps1 -Installer <path> [-Offline]` מיועד ל־Windows
+11 נקי: התקנה שקטה, בדיקת קבצים ומודלים, `SongVoice.exe --smoke-test`, הסרה שקטה
+ואימות שגם תיקיית ההתקנה וגם `%LOCALAPPDATA%\SongVoice` נעלמו. ה־release workflow
+מריץ את המסלול לשני המתקינים על runner נקי בכל תגית. קבלת "קאבר ראשון" מוסיפה
+לשער הזה שיר וקול יעד מורשים ואינה מוחלפת ב־smoke הסינתטי.
+
+---
+
+## 9. קבלת Phase 12
+
+שער השחרור המקומי כולל את כל בדיקות היחידה/אינטגרציה, lint, types, גבולות
+ארכיטקטורה, רישיונות, בידוד `env-bench`, מטריצת hard-crash, benchmark מכני,
+GUI/RTL ובניית שני המתקינים. ארבע בדיקות העמידות שנדרשו במפורש מכוסות כך:
+
+| תרחיש | שער |
+|---|---|
+| שיר של 10 דקות | `test_phase12.py` מעביר timeline של 600 שניות בחלונות הייצור ומאמת אורך מדויק והתקדמות מלאה |
+| קובץ פגום | `test_audio.py` מאמת `E_AUDIO_UNSUPPORTED` והודעה עברית עם פעולה |
+| אין מקום בדיסק | `test_jobs.py` ו־`test_resources.py` מאמתים `E_DISK_FULL`, ניקוי חלקי ושמירת פלט קודם |
+| ניתוק באמצע הורדה | `test_resources.py` מנתק stream אחרי 1,000 bytes ומאמת resume עם `Range: bytes=1000-` ו־SHA תקין |
+
+הבדיקה בת 10 הדקות משתמשת בקצב דגימה מוקטן כדי לא להקצות מאות MB ב־CI; משך
+הזמן, תוכנית החלונות והחוזה sample-exact זהים. היא שער עמידות מכני, לא מדד איכות.
+
+קבלה אנושית על חמשת השירים ושלושת הקולות שבסעיף 1, clean Windows 11 עם קאבר
+ראשון, חתימת Authenticode ושיקוף פרטי אינם ניתנים להשלמה מתוך הריפו. אין לסמן
+אותם כעוברים ללא החומרים, ה־VM וה־credentials המתאימים.
