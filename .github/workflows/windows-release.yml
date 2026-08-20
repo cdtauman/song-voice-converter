@@ -57,10 +57,13 @@ jobs:
           WINDOWS_CERT_BASE64: ${{ secrets.WINDOWS_CERT_BASE64 }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: packaging/sign.ps1
-      - name: Hash release artifacts
+      - name: Split oversized offline installer for GitHub Releases
         shell: pwsh
         run: |
-          Get-ChildItem packaging/output/*.exe | ForEach-Object {
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          packaging/split-release-asset.ps1 -Path "packaging/output/SongVoice-$version-Offline-Setup.exe"
+          Copy-Item packaging/join-release-asset.ps1 packaging/output/Join-SongVoice-Offline-Installer.ps1 -Force
+          Get-ChildItem packaging/output -File | Where-Object Name -ne "SHA256SUMS.txt" | ForEach-Object {
             "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
           } | Set-Content packaging/output/SHA256SUMS.txt -Encoding ascii
       - uses: actions/upload-artifact@v4
