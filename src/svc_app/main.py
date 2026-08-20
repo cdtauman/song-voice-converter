@@ -71,6 +71,19 @@ class EngineWorker(QObject):
             )
 
 
+class _SmokeClient:
+    """Minimal local client so a packaged GUI smoke test cannot block on RPC."""
+
+    def voices(self) -> list[dict[str, Any]]:
+        return []
+
+    def training_sessions(self) -> list[dict[str, Any]]:
+        return []
+
+    def cancel_current(self) -> None:
+        return None
+
+
 class MainWindow(QMainWindow):
     def __init__(self, client: EngineClient | None = None) -> None:
         super().__init__()
@@ -402,7 +415,7 @@ def main(argv: list[str] | None = None) -> int:
     app.setApplicationName("SongVoice")
     app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
     apply_theme(app, Theme.SYSTEM)
-    window = MainWindow()
+    window = MainWindow(_SmokeClient() if args.smoke_test else None)  # type: ignore[arg-type]
     window.show()
     if not args.smoke_test:
         QTimer.singleShot(0, window.offer_first_run)
