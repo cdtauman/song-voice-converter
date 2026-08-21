@@ -139,6 +139,35 @@ def test_import_happy_path(tmp_path: Path) -> None:
     assert entry.handle().root == entry.root
 
 
+def test_import_without_profile_generates_usable_neutral_profile(tmp_path: Path) -> None:
+    lib = VoiceLibrary(_paths(tmp_path))
+    result = import_voice_from_zip(
+        _make_zip(tmp_path), "Default", consent_confirmed=True, library=lib
+    )
+
+    entry = lib.get(result.voice_id)
+    profile = entry.profile()
+    assert profile is not None
+    assert profile.f0_method == "unmeasured-neutral"
+    assert entry.manifest.usable is True
+    assert result.imported_profile is False
+    assert result.generated_profile is True
+
+
+def test_import_assigns_unique_ids_to_multiple_hebrew_names(tmp_path: Path) -> None:
+    lib = VoiceLibrary(_paths(tmp_path))
+    first = import_voice_from_zip(
+        _make_zip(tmp_path, name="first.zip"), "קול ראשון", True, library=lib
+    )
+    second = import_voice_from_zip(
+        _make_zip(tmp_path, name="second.zip"), "קול שני", True, library=lib
+    )
+
+    assert first.voice_id == "voice"
+    assert second.voice_id == "voice-2"
+    assert len(lib.list()) == 2
+
+
 def test_import_rejects_archive_without_model(tmp_path: Path) -> None:
     lib = VoiceLibrary(_paths(tmp_path))
     archive = _make_zip(tmp_path, model=None, index=None)
@@ -257,14 +286,14 @@ def test_failed_overwrite_restores_existing_voice(
         tmp_path, model=b"PK\x03\x04" + b"new" * 20, index=None, name="next.zip"
     )
 
-    real_replace = Path.replace
+    real_rename = Path.rename
 
     def fail_activation(path: Path, target: Path) -> Path:
         if path.name.startswith(".dup.import-") and target.name == "dup":
             raise OSError("simulated activation failure")
-        return real_replace(path, target)
+        return real_rename(path, target)
 
-    monkeypatch.setattr(Path, "replace", fail_activation)
+    monkeypatch.setattr(Path, "rename", fail_activation)
     with pytest.raises(OSError, match="simulated activation failure"):
         import_voice_from_zip(
             replacement, "Dup", consent_confirmed=True, library=lib, voice_id="dup", overwrite=True
@@ -281,7 +310,7 @@ def test_import_recovers_backup_left_by_crash_before_replacement(tmp_path: Path)
     import_voice_from_zip(first, "Dup", consent_confirmed=True, library=lib, voice_id="dup")
     voice_dir = lib.voice_dir("dup")
     backup = voice_dir.with_name(".dup.previous")
-    voice_dir.replace(backup)  # crash between the two renames
+    voice_dir.rename(backup)  # crash between the two renames
 
     with pytest.raises(EngineError):  # recovered voice still refuses an accidental overwrite
         import_voice_from_zip(first, "Dup", consent_confirmed=True, library=lib, voice_id="dup")

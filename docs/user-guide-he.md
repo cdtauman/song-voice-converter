@@ -7,11 +7,11 @@ SongVoice היא תוכנת Windows מקומית ליצירת קאבר בקול 
 
 ## התקנה והפעלה ראשונה
 
-1. הפעל את `SongVoice-1.0.0-Setup.exe`. להתקנה ללא אינטרנט השתמש ב־
-   `SongVoice-1.0.0-Offline-Setup.exe`.
+1. הפעל את `SongVoice-1.0.1-Setup.exe`. להתקנה ללא אינטרנט השתמש ב־
+   `SongVoice-1.0.1-Offline-Setup.exe`.
    אם מתקין ה־offline מופיע ב־GitHub כקבצי `part001`, `part002` וכדומה,
    הורד את כל החלקים לאותה תיקייה, הרכב אותם, ורק אז הפעל את המתקין:
-   `powershell -ExecutionPolicy Bypass -File .\Join-SongVoice-Offline-Installer.ps1 -FirstPart .\SongVoice-1.0.0-Offline-Setup.exe.part001`.
+   `powershell -ExecutionPolicy Bypass -File .\Join-SongVoice-Offline-Installer.ps1 -FirstPart .\SongVoice-1.0.1-Offline-Setup.exe.part001`.
 2. אשף ההפעלה הראשונה בודק את המעבד/כרטיס המסך, את ffmpeg ואת מודלי הליבה.
 3. בהתקנה המקוונת השאר את החיבור פעיל עד שהמודלים מסומנים כתקינים. אם החיבור
    נקטע, הפעל שוב לאחר שחזר — ההורדה ממשיכה מהקובץ החלקי.

@@ -16,6 +16,10 @@ if (-not $Version) {
     $Version = $match.Matches[0].Groups[1].Value
 }
 if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { throw "Invalid release version: $Version" }
+& $PythonPath -c "import PySide6, torch, audio_separator, svc_app, svc_engine"
+if ($LASTEXITCODE -ne 0) {
+    throw "The selected Python is missing the complete GUI and engine runtime"
+}
 & (Join-Path $PSScriptRoot "fetch-dependencies.ps1")
 if (-not $SkipBuildRequirements) {
     uv pip install --python $PythonPath -r (Join-Path $PSScriptRoot "build-requirements.txt")

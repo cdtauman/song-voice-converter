@@ -8,6 +8,9 @@ src = repo / "src"
 deps = repo / "packaging" / "build" / "dependencies"
 
 hiddenimports = [
+    "svc_engine.packaging_smoke",
+    "torch",
+    "audio_separator.separator",
     "audio_separator.separator.architectures.demucs_separator",
     "audio_separator.separator.architectures.mdx_separator",
     "audio_separator.separator.architectures.mdxc_separator",

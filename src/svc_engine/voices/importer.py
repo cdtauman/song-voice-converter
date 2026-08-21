@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import IO
 
 from svc_engine.errors import EngineError, ErrorCode
+from svc_engine.profiles import VoiceProfile
 from svc_engine.voices.library import VoiceEntry, VoiceLibrary
 from svc_engine.voices.manifest import (
     AVATAR_FILE,
@@ -64,6 +65,7 @@ class ImportResult:
     imported_sample: bool
     imported_avatar: bool
     imported_profile: bool
+    generated_profile: bool
 
     def summary_he(self) -> str:
         extras = []
@@ -71,6 +73,8 @@ class ImportResult:
             extras.append("קובץ חיפוש")
         if self.imported_profile:
             extras.append("פרופיל מנעד")
+        elif self.generated_profile:
+            extras.append("פרופיל מנעד ניטרלי")
         if self.imported_sample:
             extras.append("דוגמה")
         tail = f" (כולל {', '.join(extras)})" if extras else ""
@@ -132,7 +136,13 @@ def import_voice_from_zip(
     library = library or VoiceLibrary()
     library.root.mkdir(parents=True, exist_ok=True)
 
-    vid = slugify(voice_id or display_name)
+    base_vid = slugify(voice_id or display_name)
+    vid = base_vid
+    if voice_id is None and not overwrite:
+        suffix = 2
+        while vid in library:
+            vid = f"{base_vid}-{suffix}"
+            suffix += 1
     _recover_interrupted_activation(library.voice_dir(vid))
     if vid in library and not overwrite:
         raise EngineError(
@@ -154,7 +164,14 @@ def import_voice_from_zip(
         # can be renamed into place atomically on the same filesystem.
         replacement = Path(tempfile.mkdtemp(prefix=f".{vid}.import-", dir=library.root))
         try:
+            imported_profile = "profile" in staged
             placed = _place(staged, replacement)
+            generated_profile = False
+            if not imported_profile:
+                profile_path = replacement / PROFILE_FILE
+                _neutral_profile(display_name.strip() or vid).save(profile_path)
+                placed["profile"] = profile_path
+                generated_profile = True
             manifest = VoiceManifest(
                 voice_id=vid,
                 display_name=display_name.strip() or vid,
@@ -188,7 +205,28 @@ def import_voice_from_zip(
         imported_index="index" in placed,
         imported_sample="sample" in placed,
         imported_avatar="avatar" in placed,
-        imported_profile="profile" in placed,
+        imported_profile=imported_profile,
+        generated_profile=generated_profile,
+    )
+
+
+def _neutral_profile(display_name: str) -> VoiceProfile:
+    """A conservative zero-shift profile for imported models without a sample.
+
+    RVC archives normally contain only weights and an index.  A broad neutral
+    range keeps the model usable without inventing a gender or pushing the song
+    into an unmeasured octave.  Training or a measured profile can replace it.
+    """
+    return VoiceProfile(
+        name=display_name,
+        comfort_low=36.0,
+        comfort_high=84.0,
+        abs_low=24.0,
+        abs_high=96.0,
+        median=60.0,
+        f0_method="unmeasured-neutral",
+        sample_seconds=0.0,
+        voiced_frames=0,
     )
 
 
@@ -297,12 +335,16 @@ def _activate_replacement(replacement: Path, voice_dir: Path) -> None:
 
     had_previous = voice_dir.exists()
     if had_previous:
-        voice_dir.replace(backup)
+        voice_dir.rename(backup)
     try:
-        replacement.replace(voice_dir)
+        # ``Path.replace`` maps to MoveFileEx on Windows and can fail with
+        # ERROR_ACCESS_DENIED for directory-to-directory activation, even when
+        # the destination does not exist.  ``rename`` is atomic on this same
+        # filesystem and works for directories on every supported platform.
+        replacement.rename(voice_dir)
     except Exception:
         if had_previous and backup.exists():
-            backup.replace(voice_dir)
+            backup.rename(voice_dir)
         raise
     if had_previous:
         shutil.rmtree(backup, ignore_errors=True)
@@ -312,4 +354,4 @@ def _recover_interrupted_activation(voice_dir: Path) -> None:
     """Restore the prior voice when a crash left only its activation backup."""
     backup = voice_dir.with_name(f".{voice_dir.name}.previous")
     if backup.exists() and not voice_dir.exists():
-        backup.replace(voice_dir)
+        backup.rename(voice_dir)

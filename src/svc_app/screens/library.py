@@ -195,18 +195,23 @@ class VoiceLibraryScreen(QWidget):
         consent.toggled.connect(ok.setEnabled)
         if dialog.exec() != QMessageBox.StandardButton.Ok:
             return
+        self._finish_import(archive, name.text().strip() or Path(archive).stem)
+
+    def _finish_import(self, archive: str, display_name: str) -> bool:
+        """Import, refresh both library views, and report a clear result."""
         try:
             result = self.client.import_voice(
                 archive,
-                name.text().strip() or Path(archive).stem,
+                display_name,
                 consent_confirmed=True,
                 consent_note="אושר בממשק SongVoice",
             )
         except EngineCallError as exc:
             QMessageBox.warning(self, "לא הצלחנו להוסיף את הקול", exc.message_he)
-            return
-        QMessageBox.information(self, "הקול נוסף", str(result.get("summary_he") or ""))
+            return False
         self.refresh()
+        QMessageBox.information(self, "הקול נוסף", str(result.get("summary_he") or ""))
+        return True
 
     def _remove(self, voice_id: str) -> None:
         answer = QMessageBox.question(

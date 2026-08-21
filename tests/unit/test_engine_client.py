@@ -3,10 +3,26 @@
 from __future__ import annotations
 
 import io
+import sys
+from pathlib import Path
 from typing import Any
 
 from svc_app.engine_client import EngineCallError, EngineClient
 from svc_engine.rpc import Event, Response, encode
+
+
+def test_workspace_python_override_is_used(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("SONGVOICE_ENGINE_PYTHON", "C:\\workspace\\python.exe")
+    client = EngineClient()
+    assert client._exe == "C:\\workspace\\python.exe"
+
+
+def test_real_engine_transport_preserves_hebrew(
+    tmp_path: Path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("SONGVOICE_HOME", str(tmp_path / "engine-home"))
+    with EngineClient(python_executable=sys.executable) as client:
+        assert client.ping("קול בדיקה")["echo"] == "קול בדיקה"
 
 
 class FakeProcess:

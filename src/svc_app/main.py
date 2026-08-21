@@ -398,9 +398,12 @@ def main(argv: list[str] | None = None) -> int:
         serve_stdio()
         return 0
     # The packaged smoke gate runs in a Windows CI runner without a desktop.
-    # Importing this module proves the frozen application's Python bootstrap;
-    # GUI behavior is covered separately by the offscreen unit suite.
+    # It also imports the real engine dependencies so an installer cannot pass
+    # validation after silently omitting Torch or the separator runtime.
     if args.smoke_test:
+        from svc_engine.packaging_smoke import verify_packaged_runtime
+
+        verify_packaged_runtime()
         return 0
     instance = QApplication.instance()
     app = instance if isinstance(instance, QApplication) else QApplication(sys.argv[:1])

@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import itertools
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Callable
@@ -42,8 +43,10 @@ class EngineClient:
     """
 
     def __init__(self, python_executable: str | None = None, cwd: Path | None = None) -> None:
-        self._exe = python_executable or sys.executable
-        self._frozen = bool(getattr(sys, "frozen", False)) and python_executable is None
+        frozen = bool(getattr(sys, "frozen", False))
+        workspace_python = os.environ.get("SONGVOICE_ENGINE_PYTHON") if not frozen else None
+        self._exe = python_executable or workspace_python or sys.executable
+        self._frozen = frozen and python_executable is None
         self._cwd = cwd
         self._proc: subprocess.Popen[str] | None = None
         self._ids = itertools.count(1)
