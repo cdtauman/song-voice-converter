@@ -45,12 +45,12 @@ def load_hubert(model_dir: Path | str, device: str = "cpu") -> Any:
             super().__init__(config)
             self.final_proj = nn.Linear(config.hidden_size, config.classifier_proj_size)
 
-    model = HubertModelWithFinalProj.from_pretrained(
+    model: Any = HubertModelWithFinalProj.from_pretrained(
         str(model_dir),
         local_files_only=True,
         torch_dtype=torch.float32,
     )
-    return model.to(device).eval()  # type: ignore[arg-type]  # transformers decorator typing
+    return model.to(device).eval()
 
 
 def extract_features(model: Any, audio_16k: Any, version: str, device: str = "cpu") -> Any:
