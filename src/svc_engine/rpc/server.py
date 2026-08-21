@@ -418,8 +418,16 @@ def serve_stdio(stdin: TextIO | None = None, stdout: TextIO | None = None) -> No
     """Read requests from stdin, write responses to stdout, until EOF."""
     from svc_engine.rpc.protocol import decode_request
 
-    stdin = stdin or sys.stdin
-    stdout = stdout or sys.stdout
+    if stdin is None:
+        stdin = sys.stdin
+        reconfigure = getattr(stdin, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="strict")
+    if stdout is None:
+        stdout = sys.stdout
+        reconfigure = getattr(stdout, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="strict")
     server = Server()
     log.info("engine rpc ready (protocol v%d)", PROTOCOL_VERSION)
 

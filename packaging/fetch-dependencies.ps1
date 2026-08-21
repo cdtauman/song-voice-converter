@@ -22,9 +22,24 @@ $archive = Join-Path $DownloadRoot "ffmpeg-win64-lgpl-shared.zip"
 if ($Force -or -not (Test-Path -LiteralPath $archive)) {
     $temporary = "$archive.part"
     Assert-UnderBuild $temporary
-    Invoke-WebRequest -Uri $ffmpeg.url -OutFile $temporary -Headers @{
+    $headers = @{
         Accept = "application/octet-stream"
         "User-Agent" = "SongVoice-Packager"
+    }
+    $token = $env:GITHUB_TOKEN
+    if (-not $token) {
+        $gh = Get-Command gh.exe -ErrorAction SilentlyContinue
+        if ($gh) {
+            $token = (& $gh.Source auth token 2>$null)
+            if ($LASTEXITCODE -ne 0) { $token = "" }
+        }
+    }
+    if ($token) { $headers.Authorization = "Bearer $token" }
+    $downloadUrl = "https://api.github.com/repos/$($ffmpeg.project)/releases/assets/$($ffmpeg.asset_id)"
+    try {
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $temporary -Headers $headers
+    } catch {
+        throw "Unable to download the pinned FFmpeg asset. Authenticate GitHub with gh auth login or GITHUB_TOKEN. $($_.Exception.Message)"
     }
     Move-Item -LiteralPath $temporary -Destination $archive -Force
 }

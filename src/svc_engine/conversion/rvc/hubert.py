@@ -45,8 +45,10 @@ def load_hubert(model_dir: Path | str, device: str = "cpu") -> Any:
             super().__init__(config)
             self.final_proj = nn.Linear(config.hidden_size, config.classifier_proj_size)
 
-    model = HubertModelWithFinalProj.from_pretrained(
-        str(model_dir), local_files_only=True, torch_dtype=torch.float32
+    model: Any = HubertModelWithFinalProj.from_pretrained(
+        str(model_dir),
+        local_files_only=True,
+        torch_dtype=torch.float32,
     )
     return model.to(device).eval()
 

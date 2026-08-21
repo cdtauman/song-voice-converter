@@ -34,10 +34,13 @@
 
 ## מה כבר עובד
 
-```bash
-pip install -e ".[gui]"
-songvoice                                    # הממשק הגרפי — ללא צורך בטרמינל לאחר ההפעלה
+```powershell
+.\setup-workspace.ps1                       # פעם אחת: Python 3.11 + מנוע + GUI + FFmpeg נעול
+.\run-workspace.ps1                         # הפעלת הממשק והמנוע מאותה סביבת עבודה
 ```
+
+אין להפעיל את הפרויקט עם `python` הכללי של Windows: SongVoice נעול ל־Python 3.11,
+והתקנת GUI בלבד אינה כוללת את מנוע RVC/Torch.
 
 ממשק שורת הפקודה נשאר זמין לפיתוח ולאוטומציה:
 

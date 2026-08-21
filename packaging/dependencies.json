@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "ffmpeg": {
-    "project": "BtbN/FFmpeg-Builds",
+    "project": "cdtauman/song-voice-converter",
     "variant": "win64-lgpl-shared",
-    "release_id": 373784774,
-    "asset_id": 522338793,
-    "asset_updated_at": "2026-08-20T14:09:34Z",
-    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip",
+    "release_id": 374503368,
+    "asset_id": 523917822,
+    "asset_updated_at": "2026-08-21T15:35:12Z",
+    "url": "https://github.com/cdtauman/song-voice-converter/releases/download/runtime-dependencies-v1/ffmpeg-win64-lgpl-shared.zip",
     "sha256": "09f2bae661948a93ea303cfd196b6e308ccb8d3f4a97c5d5cbbd0aa6a5e3dc30",
     "size_bytes": 67708184,
     "license": "LGPL-2.1-or-later",

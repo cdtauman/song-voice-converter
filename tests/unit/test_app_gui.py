@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMessageBox  # noqa: E402
 from svc_app.i18n import error_text  # noqa: E402
 from svc_app.main import MainWindow  # noqa: E402
 from svc_app.screens import CoverWizard  # noqa: E402
+from svc_app.screens.library import VoiceLibraryScreen  # noqa: E402
 from svc_engine.errors import ErrorCode  # noqa: E402
 
 
@@ -48,6 +49,40 @@ class FakeClient:
 
 def _app() -> QApplication:
     return QApplication.instance() or QApplication([])
+
+
+def test_successful_zip_import_refreshes_the_visible_library(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    class ImportClient:
+        def __init__(self) -> None:
+            self.items: list[dict[str, Any]] = []
+
+        def import_voice(self, archive: str, display_name: str, **_kwargs: Any) -> dict[str, Any]:
+            self.items.append(
+                {
+                    "id": "default",
+                    "display_name": display_name,
+                    "usable": True,
+                    "health_note_he": "הקול מוכן לשימוש.",
+                }
+            )
+            return {"voice_id": "default", "summary_he": "הקול נוסף."}
+
+        def voices(self) -> list[dict[str, Any]]:
+            return list(self.items)
+
+        def training_sessions(self) -> list[dict[str, Any]]:
+            return []
+
+    _app()
+    client = ImportClient()
+    screen = VoiceLibraryScreen(client)  # type: ignore[arg-type]
+    updates: list[list[dict[str, Any]]] = []
+    screen.changed.connect(updates.append)
+    monkeypatch.setattr(QMessageBox, "information", lambda *_args, **_kwargs: None)
+
+    assert screen._finish_import("default.zip", "Default") is True
+    assert updates[-1][0]["id"] == "default"
+    assert screen.cards.count() == 1
 
 
 def test_all_main_screens_inherit_rtl() -> None:

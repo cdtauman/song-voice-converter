@@ -57,14 +57,14 @@ def test_release_version_and_packaging_are_synchronised() -> None:
     pyproject = (repo / "pyproject.toml").read_text(encoding="utf-8")
     project_version = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)
     assert project_version is not None
-    assert project_version.group(1) == app_version == engine_version == "1.0.0"
+    assert project_version.group(1) == app_version == engine_version == "1.0.1"
 
     installer = (repo / "packaging" / "SongVoice.iss").read_text(encoding="utf-8")
     spec = (repo / "packaging" / "songvoice.spec").read_text(encoding="utf-8")
     workflow = (repo / ".github" / "workflows" / "windows-release.yml").read_text(
         encoding="utf-8"
     )
-    assert '#define MyAppVersion "1.0.0"' in installer
+    assert '#define MyAppVersion "1.0.1"' in installer
     assert '"user-guide-he.md"' in spec
     assert '"songvoice-quickstart-he.mp4"' in spec
     assert "SongVoice-0.1.0" not in workflow

@@ -81,6 +81,11 @@ class UpdateManager:
         if not manifest_url.startswith("https://"):
             raise ValueError("manifest URL must use HTTPS")
         response = self.session.get(manifest_url, timeout=(15, 30))
+        # A repository may legitimately have no published release yet.  Treat
+        # GitHub's missing latest-release asset as "no update", not as an
+        # application error shown to the user.
+        if getattr(response, "status_code", None) == 404:
+            return None
         response.raise_for_status()
         raw = response.json()
         release = Release.from_dict(raw)

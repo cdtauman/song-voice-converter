@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main, "phase/**"]
@@ -41,6 +44,8 @@ jobs:
       # builds may omit the Soxr resampler required by the audio contract.
       - name: Provision release FFmpeg
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           & packaging\fetch-dependencies.ps1
           (Resolve-Path "packaging\build\dependencies\ffmpeg\bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append

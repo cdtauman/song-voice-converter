@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.0.1",
     [string]$BaseUrl = "https://github.com/cdtauman/song-voice-converter/releases/download"
 )
 

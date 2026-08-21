@@ -19,9 +19,12 @@ from svc_engine.updates import Release, UpdateManager, compare_versions
 
 
 class StreamResponse:
-    def __init__(self, body: bytes, json_body: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, body: bytes, json_body: dict[str, Any] | None = None, status_code: int = 200
+    ) -> None:
         self.body = body
         self._json = json_body
+        self.status_code = status_code
 
     def __enter__(self):  # type: ignore[no-untyped-def]
         return self
@@ -142,6 +145,15 @@ def test_manifest_check_requires_https_and_newer_version(tmp_path: Path) -> None
     assert manager.check("https://updates.example/update.json", "0.3.0") is None
     with pytest.raises(ValueError):
         manager.check("http://updates.example/update.json", "0.2.0")
+
+
+def test_missing_release_manifest_means_no_update(tmp_path: Path) -> None:
+    class MissingSession:
+        def get(self, _url: str, **_kwargs: Any) -> StreamResponse:
+            return StreamResponse(b"", status_code=404)
+
+    manager = UpdateManager(tmp_path, session=MissingSession())  # type: ignore[arg-type]
+    assert manager.check("https://updates.example/update.json", "1.0.0") is None
 
 
 class LocalDownloader:

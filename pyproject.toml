@@ -1,6 +1,6 @@
 [project]
 name = "songvoice"
-version = "1.0.0"
+version = "1.0.1"
 description = "SongVoice - local high-quality singing voice conversion for Windows"
 # Locked to 3.11 by the Phase 1 Compatibility Spike, not by preference.
 # On 3.12 the resolver picks librosa 1.0.0, which dropped `audioread`, while
